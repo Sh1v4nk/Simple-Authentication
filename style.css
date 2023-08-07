@@ -108,3 +108,28 @@ body {
     width: 85%;
   }
 }
+
+@media (min-width: 481px) and (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .left-container {
+    font-size: 20px;
+  }
+
+  .logo{
+    height: 45%;
+    width: 55%;
+  }
+
+  .right-container {
+    height: 50%;
+    width: 65%;
+    font-size: 20px;
+  }
+
+  .forgot-password{
+    font-size: 18px;
+  }
+}

@@ -15,7 +15,6 @@ The login page provides a basic user interface for authentication. It includes i
 
 To view the login page, simply open the `index.html` file in your preferred web browser.
 
-```bash
 # Clone the repository (if you haven't already)
 git clone https://github.com/Sh1v4nk/SimpleLoginPage.git
 

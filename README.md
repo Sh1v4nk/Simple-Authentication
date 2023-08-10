@@ -15,11 +15,11 @@ The login page provides a basic user interface for authentication. It includes i
 
 To view the login page, simply open the `index.html` file in your preferred web browser.
 
-# Clone the repository (if you haven't already)
+1. **Clone the repository (if you haven't already):**
 git clone https://github.com/Sh1v4nk/SimpleLoginPage.git
 
-# Navigate to the project directory
+2. **Navigate to the project directory:**
 cd SimpleLoginPage
 
-# Open the login page in your web browser
+3. **Open the login page in your web browser:**
 open index.html

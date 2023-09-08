@@ -29,7 +29,7 @@ cd SimpleLoginPage
 3. **Open the login page in your web browser:**
 open index.html
 
-## Screemshot
+## Screenshot
 
 <img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="200">
 

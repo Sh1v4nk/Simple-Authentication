@@ -39,7 +39,9 @@ open index.html
 
 ## Screenshot
 
-<img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="200">
+<div align="center">
+    <img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="auto">
+</div>
 
 ## Contributing
 

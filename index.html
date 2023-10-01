@@ -21,18 +21,19 @@
             <h2>Powered By C# Ui Academy</h2>
         </div>
         <div class="right-container">
-            <form class="form">
+            <form class="form" onsubmit="return validatePassword()">
                 <h1 class="login-title">Login</h1>
                 <input type="text" class="username-input" name="username" placeholder="User Name">
-                <input type="password" class="password-input" name="password" placeholder="Password">
+                <input type="password" class="password-input" name="password" required placeholder="Password">
                 <div>
                     <h3 class="forgot-password"><a href="#">Forgot Password?</a></h3>
-                    <button class="login-button">Login</button>
+                    <button class="login-button" type="submit">Login</button>
                     <button class="signup-button">Singup</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <script src="script.js"></script>
 </body>
 </html>

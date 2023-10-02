@@ -18,6 +18,7 @@ The login page provides a fundamental user interface for authentication. It inco
 
 - HTML
 - CSS
+- JS
 
 ## Getting Started
 

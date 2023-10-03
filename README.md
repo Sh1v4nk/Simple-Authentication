@@ -7,7 +7,8 @@ A straightforward login page made with HTML and CSS is present in this repositor
 - [Overview](#overview)
 - [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
-- [Screenshot](#screenshot)
+- [Demo](#demo)
+  - [Screenshot](#screenshot)
 - [Contributing](#contributing)
 
 ## Overview
@@ -38,7 +39,10 @@ cd SimpleLoginPage
 3. **Open the login page in your web browser:**
 open index.html
 
-## Screenshot
+## Demo
+View the live demo [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
+
+#### Screenshot
 
 <div align="center">
     <img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="auto">

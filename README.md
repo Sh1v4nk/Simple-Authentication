@@ -1,10 +1,11 @@
 # SimpleLoginPage
 
-A straightforward login page made with HTML and CSS is present in this repository. It's a project I started as I become more familiar with the basics of web development. This learning assignment will assess my capacity to create straightforward web pages with a tidy and functional style. Beginners who want to improve their HTML and CSS skills might also benefit from using it.
+This repository is a straightforward login page project, showcasing the integration of HTML, CSS, and JavaScript. Originally intended to strengthen fundamental web development skills, Beginners who want to improve their HTML and CSS skills might also benefit from using it.
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Key Features](#key-features)
 - [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
 - [Demo](#demo)
@@ -14,6 +15,12 @@ A straightforward login page made with HTML and CSS is present in this repositor
 ## Overview
 
 The login page provides a fundamental user interface for authentication. It incorporates input fields for username and password, along with a login button. The design is focused on simplicity and responsiveness, ensuring a seamless experience across various devices.
+
+## Key Features
+
+- Well-structured HTML for a clear understanding of document flow.
+- Thoughtfully designed CSS for an aesthetically pleasing user interface.
+- Implementation of a JavaScript alert for wrong password format.
 
 ## Technologies Used
 

@@ -47,7 +47,7 @@ cd SimpleLoginPage
 open index.html
 
 ## Demo
-View the live demo [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
+You can also view a live demo of the SimpleLoginPage [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
 
 #### Screenshot
 

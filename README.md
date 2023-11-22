@@ -8,8 +8,7 @@ This repository is a straightforward login page project, showcasing the integrat
 - [Key Features](#key-features)
 - [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
-- [Demo](#demo)
-  - [Screenshot](#screenshot)
+- [Screenshot](#screenshot)
 - [Contributing](#contributing)
 
 ## Overview
@@ -46,10 +45,9 @@ cd SimpleLoginPage
 3. **Open the login page in your web browser:**
 open index.html
 
-## Demo
-You can also view a live demo of the SimpleLoginPage [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
+4. Alternatively, you can view a live demo of the SimpleLoginPage [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
 
-#### Screenshot
+## Screenshot
 
 <div align="center">
     <img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="auto">

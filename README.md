@@ -45,7 +45,7 @@ cd SimpleLoginPage
 3. **Open the login page in your web browser:**
 open index.html
 
-4. Alternatively, you can view a live demo of the SimpleLoginPage [here](https://sh1v4nk.github.io/SimpleLoginPage/). 
+4. Alternatively, you can view a live demo of the [SimpleLoginPage](https://sh1v4nk.github.io/SimpleLoginPage/). 
 
 ## Screenshot
 

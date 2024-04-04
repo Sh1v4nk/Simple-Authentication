@@ -48,7 +48,11 @@ git clone https://github.com/Sh1v4nk/SimpleLoginPage.git
 
 ## Contributing
 
-Your contributions are highly encouraged and greatly appreciated! Whether you're fixing a small bug, adding a feature, or suggesting improvements, every effort counts.
+Your contributions are highly encouraged and greatly appreciated! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and submit a pull request.
 
 ---
 

@@ -1,6 +1,6 @@
 # SimpleLoginPage
 
-This repository is a straightforward login page project, showcasing the integration of HTML, CSS, and JavaScript. Originally intended to strengthen fundamental web development skills, Beginners who want to improve their HTML and CSS skills might also benefit from using it.
+This project is a basic login page built with HTML, CSS, and JavaScript. It's designed for beginners to practice their web development skills.
 
 ## Table of Contents
 

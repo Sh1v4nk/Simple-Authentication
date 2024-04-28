@@ -11,23 +11,23 @@ This project is a basic login page built with HTML, CSS, and JavaScript. It's de
 - [Screenshot](#screenshot)
 - [Contributing](#contributing)
 
-## Overview
+## 🚀 Overview
 
 The login page provides a fundamental user interface for authentication. It incorporates input fields for username and password, along with a login button. The design is focused on simplicity and responsiveness, ensuring a seamless experience across various devices.
 
-## Key Features
+## 🔑 Key Features
 
 - Well-structured HTML for a clear understanding of document flow.
 - Thoughtfully designed CSS for an aesthetically pleasing user interface.
 - Implementation of a JavaScript alert for wrong password format.
 
-## Technologies Used
+## 🛠️ Technologies Used
 
 - HTML
 - CSS
 - JavaScript
 
-## Getting Started
+## 🏁 Getting Started
 
 To view the login page, simply open the `index.html` file in your preferred web browser.
 
@@ -40,13 +40,13 @@ git clone https://github.com/Sh1v4nk/SimpleLoginPage.git
 
 3. Alternatively, you can view a live demo of the [SimpleLoginPage](https://sh1v4nk.github.io/SimpleLoginPage/). 
 
-## Screenshot
+## 📸 Screenshot
 
 <div align="center">
     <img src="https://i.ibb.co/Vxd2pt7/image.png" alt="Login Page Demo" height="auto">
 </div>
 
-## Contributing
+## 🤝 Contributing
 
 Your contributions are highly encouraged and greatly appreciated! Please follow these steps:
 

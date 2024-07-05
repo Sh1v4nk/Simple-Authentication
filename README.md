@@ -36,12 +36,13 @@ To view the login page, simply open the `index.html` file in your preferred web 
 ```bash
 git clone https://github.com/Sh1v4nk/SimpleLoginPage.git
 ```
+2. Navigate to the project directory:
 ```
  cd SimpleLoginPage
 ```
-2. Open `index.html` in your web browser or.
+3. Open `index.html` in your web browser or.
 
-3. Alternatively, you can view a live demo of the [SimpleLoginPage](https://sh1v4nk.github.io/SimpleLoginPage/). 
+4. Alternatively, you can view a live demo of the [SimpleLoginPage](https://sh1v4nk.github.io/SimpleLoginPage/). 
 
 ## Screenshot
 

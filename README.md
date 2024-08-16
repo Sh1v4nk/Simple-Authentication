@@ -23,7 +23,7 @@ The login page provides a fundamental user interface for authentication. It inco
 
 ## Technologies Used
 
-- HTML
+- [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML)
 - CSS
 - JavaScript
 

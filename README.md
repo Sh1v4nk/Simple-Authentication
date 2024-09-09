@@ -1,6 +1,10 @@
+<div align="center">
+
 # SimpleLoginPage
 
 This project is a basic login page built with HTML, CSS, and JavaScript. It's designed for beginners to practice their web development skills.
+</div>
+
 
 ## Table of Contents
 

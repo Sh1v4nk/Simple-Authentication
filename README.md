@@ -2,6 +2,8 @@
 
 # SimpleLoginPage
 
+![GitHub repo size](https://img.shields.io/github/repo-size/Sh1v4nk/SimpleLoginPage)
+
 This project is a basic login page built with HTML, CSS, and JavaScript. It's designed for beginners to practice their web development skills.
 </div>
 

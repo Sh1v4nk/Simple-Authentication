@@ -1,0 +1,29 @@
+{
+  "name": "auth-backend",
+  "module": "App.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun App.ts",
+    "dev": "bun --watch App.ts"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/bun": "latest",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/nodemailer": "^6.4.16",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.2",
+    "nodemailer": "^6.9.15",
+    "zod": "^3.23.8"
+  }
+}

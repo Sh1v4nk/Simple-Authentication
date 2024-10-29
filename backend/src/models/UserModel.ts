@@ -1,16 +1,5 @@
-import mongoose, { Document, Schema, Model } from "mongoose";
-
-interface IUser extends Document {
-  email: string;
-  password: string;
-  username: string;
-  lastLogin: Date;
-  isVerified: boolean;
-  resetPasswordToken: boolean;
-  resetPasswordExpiresAt: Date;
-  verificationToken: string | undefined;
-  verificationTokenExpiresAt: Date | undefined;
-}
+import mongoose, { Schema, Model } from "mongoose";
+import { type IUser } from "../../interfaces/UserInterface";
 
 const UserSchema: Schema<IUser> = new Schema(
   {
@@ -38,8 +27,8 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
-    verificationToken: String,
-    verificationTokenExpiresAt: Date,
+    emailVerificationToken: String,
+    emailVerificationTokenExpiresAt: Date,
   },
   { timestamps: true }
 );

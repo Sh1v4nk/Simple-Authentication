@@ -7,7 +7,7 @@ import User from "../models/UserModel";
 import {
   signupValidation,
   signinValidation,
-} from "../../validations/authValidations";
+} from "../validations/authValidations";
 import {
   sendSuccessResponse,
   sendErrorResponse,
@@ -178,3 +178,7 @@ export const signout = async (req: Request, res: Response): Promise<void> => {
     console.error("Error during sign out:", error);
   }
 };
+
+export const forgotPassword = ()=>{
+  
+}

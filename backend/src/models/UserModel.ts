@@ -26,7 +26,7 @@ const UserSchema: Schema<IUser> = new Schema(
       default: false,
     },
     resetPasswordToken: String,
-    resetPasswordExpiresAt: Date,
+    resetPasswordTokenExpiresAt: Date,
     emailVerificationToken: String,
     emailVerificationTokenExpiresAt: Date,
   },

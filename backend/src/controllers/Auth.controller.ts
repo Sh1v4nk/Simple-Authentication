@@ -1,31 +1,35 @@
 import type { Request, Response } from "express";
-import type { ObjectId } from "mongoose";
+import type { Date, ObjectId } from "mongoose";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 
 import User from "../models/UserModel";
 import {
-  signupValidation,
-  signinValidation,
+  signUpValidation,
+  signInValidation,
+  forgotPasswordValidation,
 } from "../validations/authValidations";
 import {
   sendSuccessResponse,
   sendErrorResponse,
   generateEmailVerificationToken,
   generateTokenAndSetCookie,
+  generateResetPasswordToken,
 } from "../utils";
 import {
   sendVerificationToken,
   successfulVerificationEmail,
+  resetPasswordEmail,
 } from "../../configs/NodeMailer/SendEmail";
 
 dotenv.config();
 
-const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const ONE_HOUR = 1 * 60 * 60 * 1000;
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = signupValidation.safeParse(req.body);
+    const result = signUpValidation.safeParse(req.body);
 
     if (!result.success) {
       sendErrorResponse(res, "Incorrect Format", 400, {
@@ -57,7 +61,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       password: hashedPassword,
       username,
       emailVerificationToken,
-      emailVerificationTokenExpiresAt: Date.now() + FIFTEEN_MINUTES_IN_MS,
+      emailVerificationTokenExpiresAt: new Date(Date.now() + FIFTEEN_MINUTES),
     });
 
     await newUser.save();
@@ -122,7 +126,7 @@ export const verifyEmail = async (
 
 export const signin = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = signinValidation.safeParse(req.body);
+    const result = signInValidation.safeParse(req.body);
 
     if (!result.success) {
       sendErrorResponse(res, "Incorrect Format", 400, {
@@ -135,8 +139,10 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
 
     const user = await User.findOne({ email });
 
+    const dummyPassword = "dummyPasswordForComparison"; // This is just a placeholder
+
     if (!user) {
-      await bcrypt.compare(password, "randomstring"); // To avoid revealing whether the user exists
+      await bcrypt.compare(password, dummyPassword); // To avoid revealing whether the user exists
       sendErrorResponse(res, "Invalid credentials");
       return;
     }
@@ -179,6 +185,52 @@ export const signout = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const forgotPassword = ()=>{
-  
-}
+export const forgotPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const result = forgotPasswordValidation.safeParse(req.body);
+
+    if (!result.success) {
+      sendErrorResponse(res, "Incorrect Format", 400, {
+        errors: result.error.errors,
+      });
+      return;
+    }
+
+    const { email } = result.data;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      sendSuccessResponse(
+        res,
+        "If this email is registered, a reset link will be sent."
+      );
+      return;
+    }
+
+    user.resetPasswordToken = generateResetPasswordToken();
+    user.resetPasswordTokenExpiresAt = new Date(Date.now() + ONE_HOUR);
+
+    await user.save();
+
+    await resetPasswordEmail(
+      user.username,
+      user.email,
+      `${process.env.CLIENT_URL}/reset-password/${user.resetPasswordToken}`
+    );
+
+    sendSuccessResponse(
+      res,
+      "If this email is registered, a reset link will be sent."
+    );
+    
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    sendErrorResponse(res, message, 500);
+    console.error("Error while reseting password:", error);
+  }
+};

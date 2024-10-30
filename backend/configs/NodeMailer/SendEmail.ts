@@ -2,6 +2,7 @@ import { transporter } from "./EmailServer";
 import {
   SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
   VERIFICATION_EMAIL_TEMPLATE,
+  PASSWORD_RESET_REQUEST_TEMPLATE,
 } from "../../src/utils";
 
 const companyName = "Auth";
@@ -32,7 +33,10 @@ export async function sendVerificationToken(
   }
 }
 
-export async function successfulVerificationEmail(username: string, email: string) {
+export async function successfulVerificationEmail(
+  username: string,
+  email: string
+) {
   try {
     if (!email) {
       throw new Error("Email is are required.");
@@ -48,11 +52,33 @@ export async function successfulVerificationEmail(username: string, email: strin
       ).replace("{companyName}", companyName),
     });
 
-    console.log(
-      "Email verification successful:",
-      response.messageId
-    );
+    console.log("Email verification successful:", response.messageId);
   } catch (error) {
     console.error("Error sending succeessful verification email:", error);
+  }
+}
+
+export async function resetPasswordEmail(
+  username: string,
+  email: string,
+  resetPasswordToken: string
+) {
+  try {
+    if (!email) {
+      throw new Error("Email is are required.");
+    }
+
+    const response = await transporter.sendMail({
+      from: sender,
+      to: email,
+      subject: "Reset Your Password",
+      html: PASSWORD_RESET_REQUEST_TEMPLATE.replace("{userName}", username)
+        .replace("{companyName}", companyName)
+        .replace("{resetURL}", resetPasswordToken),
+    });
+
+    console.log("Password reset mail sent successfully:", response.messageId);
+  } catch (error) {
+    console.error("Error sending reset password email:", error);
   }
 }

@@ -3,9 +3,12 @@ import type { ObjectId } from "mongoose";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-
 export function generateEmailVerificationToken(): string {
   return crypto.randomInt(100000, 1000000).toString();
+}
+
+export function generateResetPasswordToken(): string {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 export const generateTokenAndSetCookie = (

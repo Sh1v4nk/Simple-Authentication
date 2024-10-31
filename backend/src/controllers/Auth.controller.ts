@@ -1,26 +1,26 @@
 import type { Request, Response } from "express";
-import type { Date, ObjectId } from "mongoose";
+import type { ObjectId } from "mongoose";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 
-import User from "../models/UserModel";
+import User from "@/models/UserModel";
 import {
   signUpValidation,
   signInValidation,
   forgotPasswordValidation,
-} from "../validations/authValidations";
+} from "@/validations/authValidations";
 import {
   sendSuccessResponse,
   sendErrorResponse,
   generateEmailVerificationToken,
   generateTokenAndSetCookie,
   generateResetPasswordToken,
-} from "../utils";
+} from "@/utils";
 import {
   sendVerificationToken,
   successfulVerificationEmail,
   resetPasswordEmail,
-} from "../../configs/NodeMailer/SendEmail";
+} from "@configs/NodeMailer/SendEmail";
 
 dotenv.config();
 
@@ -40,15 +40,16 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
     const { username, email, password } = result.data;
 
-    const existingUserByEmail = await User.findOne({ email });
-    if (existingUserByEmail) {
-      sendErrorResponse(res, "Email already exists");
-      return;
-    }
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }],
+    });
 
-    const existingUserByUsername = await User.findOne({ username });
-    if (existingUserByUsername) {
-      sendErrorResponse(res, "Username already exists");
+    if (existingUser) {
+      if (existingUser.email === email) {
+        sendErrorResponse(res, "Email already exists");
+      } else if (existingUser.username === username) {
+        sendErrorResponse(res, "Username already exists");
+      }
       return;
     }
 
@@ -226,7 +227,6 @@ export const forgotPassword = async (
       res,
       "If this email is registered, a reset link will be sent."
     );
-    
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "An unknown error occurred";

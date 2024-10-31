@@ -3,7 +3,7 @@ import {
   SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
   VERIFICATION_EMAIL_TEMPLATE,
   PASSWORD_RESET_REQUEST_TEMPLATE,
-} from "../../src/utils";
+} from "@/utils";
 
 const companyName = "Auth";
 const sender = `"XYZ" <xyz@ethereal.email>"`;
@@ -49,7 +49,7 @@ export async function successfulVerificationEmail(
       html: SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE.replace(
         "{userName}",
         username
-      ).replace("{companyName}", companyName),
+      ).replace(/{companyName}/g, companyName),
     });
 
     console.log("Email verification successful:", response.messageId);

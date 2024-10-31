@@ -5,7 +5,7 @@ import {
   signout,
   verifyEmail,
   forgotPassword
-} from "../controllers/Auth.controller";
+} from "@/controllers/Auth.controller";
 
 const router = express.Router();
 

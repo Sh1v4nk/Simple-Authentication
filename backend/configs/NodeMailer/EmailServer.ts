@@ -1,24 +1,25 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
+import dotenv from "dotenv";
 
-// Function to create and return a nodemailer transporter for development
-// get host port and other info from https://ethereal.email/create
-// export const transporter = nodemailer.createTransport({
-//   host: "smtp.ethereal.email",
-//   port: 587,
-//   secure: false,
-//   auth: {
-//     user: "zakary43@ethereal.email",
-//     pass: "ftqmcykFzzA9bqMEYw",
-//   },
-// });
+dotenv.config();
 
-// for production
-export const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SERVICE || "gmail",       // SMTP host
-  port: 465,                                       // Use port 465 for secure
-  secure: true,                                   // true for 465, ensures SSL/TLS
+const transporter: Transporter = nodemailer.createTransport({
+  host:
+    process.env.NODE_ENV === "development"
+      ? "smtp.ethereal.email"
+      : process.env.EMAIL_SERVICE || "gmail",
+  port: process.env.NODE_ENV === "development" ? 587 : 465,
+  secure: process.env.NODE_ENV !== "development", // true for production, false for development
   auth: {
-    user: process.env.EMAIL_ID,
-      pass: process.env.EMAIL_PASSWORD,
+    user:
+      process.env.NODE_ENV === "development"
+        ? process.env.TEMP_EMAIL
+        : process.env.EMAIL_ID,
+    pass:
+      process.env.NODE_ENV === "development"
+        ? process.env.TEMP_EMAIL_PASSWORD
+        : process.env.EMAIL_PASSWORD,
   },
 });
+
+export { transporter };

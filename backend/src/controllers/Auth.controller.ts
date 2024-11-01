@@ -8,6 +8,7 @@ import {
   signUpValidation,
   signInValidation,
   forgotPasswordValidation,
+  resetPasswordValidation,
 } from "@/validations/authValidations";
 import {
   sendSuccessResponse,
@@ -20,12 +21,15 @@ import {
   sendVerificationToken,
   successfulVerificationEmail,
   resetPasswordEmail,
+  passwordResetSuccessfulEmail,
 } from "@configs/NodeMailer/SendEmail";
 
 dotenv.config();
 
+// constants variables
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const ONE_HOUR = 1 * 60 * 60 * 1000;
+const saltRounds: number = parseInt(process.env.SALT_ROUNDS || "10", 10);
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -53,7 +57,6 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const saltRounds: number = parseInt(process.env.SALT_ROUNDS || "10", 10);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const emailVerificationToken = generateEmailVerificationToken();
 
@@ -67,7 +70,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
     await newUser.save();
 
-    sendVerificationToken(
+    await sendVerificationToken(
       newUser.username,
       newUser.email,
       emailVerificationToken
@@ -208,7 +211,7 @@ export const forgotPassword = async (
       sendSuccessResponse(
         res,
         "If this email is registered, a reset link will be sent."
-      );
+      ); // It prevents revealing if user exists
       return;
     }
 
@@ -231,6 +234,77 @@ export const forgotPassword = async (
     const message =
       error instanceof Error ? error.message : "An unknown error occurred";
     sendErrorResponse(res, message, 500);
-    console.error("Error while reseting password:", error);
+    console.error("Error while processing forgot password:", error);
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const result = resetPasswordValidation.safeParse({ token, password });
+    if (!result.success) {
+      sendErrorResponse(res, "Incorrect Format", 400, {
+        errors: result.error.errors,
+      });
+      return;
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordTokenExpiresAt: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      sendErrorResponse(res, "Invalid or expired reset token");
+      return;
+    }
+    // updating password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordTokenExpiresAt = undefined;
+    await user.save();
+
+    await passwordResetSuccessfulEmail(user.username, user.email);
+
+    sendSuccessResponse(res, "Password reset successful");
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    sendErrorResponse(res, message, 500);
+    console.error("Error while processing reset password:", error);
+  }
+};
+
+export const verifyAuth = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  if (!req.userId) {
+    sendErrorResponse(res, "Unauthorized: User ID not provided", 401);
+    return;
+  }
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      sendErrorResponse(res, "User not found", 404);
+      return;
+    }
+
+    sendSuccessResponse(res, "User found", {
+      ...user.toObject(),
+      password: undefined,
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    sendErrorResponse(res, message, 500);
+    console.error("Error in verifyAuth:", error);
   }
 };

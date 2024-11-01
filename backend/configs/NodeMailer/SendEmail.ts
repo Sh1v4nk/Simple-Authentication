@@ -3,6 +3,7 @@ import {
   SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
   VERIFICATION_EMAIL_TEMPLATE,
   PASSWORD_RESET_REQUEST_TEMPLATE,
+  PASSWORD_RESET_SUCCESS_TEMPLATE,
 } from "@/utils";
 
 const companyName = "Auth";
@@ -21,7 +22,7 @@ export async function sendVerificationToken(
     const response = await transporter.sendMail({
       from: sender,
       to: email,
-      subject: "Verify Your Email",
+      subject: "Verify your email",
       html: VERIFICATION_EMAIL_TEMPLATE.replace("{userName}", username)
         .replace("{verificationCode}", verificationToken)
         .replace("{companyName}", companyName),
@@ -45,7 +46,7 @@ export async function successfulVerificationEmail(
     const response = await transporter.sendMail({
       from: sender,
       to: email,
-      subject: "Email Verified Successfully",
+      subject: "Email verified successfully",
       html: SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE.replace(
         "{userName}",
         username
@@ -71,7 +72,7 @@ export async function resetPasswordEmail(
     const response = await transporter.sendMail({
       from: sender,
       to: email,
-      subject: "Reset Your Password",
+      subject: "Reset your password",
       html: PASSWORD_RESET_REQUEST_TEMPLATE.replace("{userName}", username)
         .replace("{companyName}", companyName)
         .replace("{resetURL}", resetPasswordToken),
@@ -81,4 +82,33 @@ export async function resetPasswordEmail(
   } catch (error) {
     console.error("Error sending reset password email:", error);
   }
+}
+
+export async function passwordResetSuccessfulEmail(
+  username: string,
+  email: string
+) {
+  try {
+    if (!email) {
+      throw new Error("Email is are required.");
+    }
+
+    const response = await transporter.sendMail({
+      from: sender,
+      to: email,
+      subject: "Password reset successful",
+      html: PASSWORD_RESET_SUCCESS_TEMPLATE.replace(
+        "{userName}",
+        username
+      ).replace("{companyName}", companyName),
+    });
+
+    console.log(
+      "Password reset successful mail sent successfully:",
+      response.messageId
+    );
+  } catch (error) {
+    console.error("Error sending password reset successful email:", error);
+  }
+  PASSWORD_RESET_SUCCESS_TEMPLATE;
 }

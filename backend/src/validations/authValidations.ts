@@ -24,3 +24,8 @@ export const signInValidation = z.object({
 export const forgotPasswordValidation = z.object({
   email: emailValidation,
 });
+
+export const resetPasswordValidation = z.object({
+  token: z.string().min(32).max(40),
+  password: passwordValidation,
+});

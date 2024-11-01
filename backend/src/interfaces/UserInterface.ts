@@ -6,8 +6,15 @@ export interface IUser extends Document {
   username: string;
   lastLogin: Date;
   isVerified: boolean;
-  resetPasswordToken: string;
-  resetPasswordTokenExpiresAt: Date;
-  emailVerificationToken: string | undefined;
-  emailVerificationTokenExpiresAt: Date | undefined;
+  resetPasswordToken?: string | undefined;
+  resetPasswordTokenExpiresAt?: Date | undefined;
+  emailVerificationToken?: string | undefined;
+  emailVerificationTokenExpiresAt?: Date | undefined;
+}
+
+// Extend the Request interface
+declare module "express-serve-static-core" {
+  interface Request {
+    userId?: string;
+  }
 }

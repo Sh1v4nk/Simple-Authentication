@@ -8,17 +8,17 @@ export function generateEmailVerificationToken(): string {
 }
 
 export function generateResetPasswordToken(): string {
-  return crypto.randomBytes(32).toString("hex");
+  return crypto.randomBytes(20).toString("hex");
 }
 
 export const generateTokenAndSetCookie = (
   res: Response,
-  userID: ObjectId
+  userId: ObjectId
 ): string => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined in environment variables.");
   }
-  const token = jwt.sign({ userID }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 

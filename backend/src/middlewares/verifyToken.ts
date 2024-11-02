@@ -12,7 +12,7 @@ export const verifyAuthToken = (
 ) => {
   const token = req.cookies.authToken;
   if (!token) {
-    sendErrorResponse(res, "Unauthorized or no token provided", 401);
+    return sendErrorResponse(res, "Unauthorized or no token provided", 401);
   }
   const secret = process.env.JWT_SECRET;
   if (!secret) {

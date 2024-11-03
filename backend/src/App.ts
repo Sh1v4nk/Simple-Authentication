@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
-import connectDB from "@configs/Database";
+import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
 
 dotenv.config();

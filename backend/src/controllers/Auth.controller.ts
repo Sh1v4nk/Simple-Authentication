@@ -22,7 +22,7 @@ import {
   successfulVerificationEmail,
   resetPasswordEmail,
   passwordResetSuccessfulEmail,
-} from "@configs/NodeMailer/SendEmail";
+} from "@/configs/NodeMailer/SendEmail";
 
 dotenv.config();
 

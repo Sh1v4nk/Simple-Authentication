@@ -3,8 +3,12 @@
   "module": "App.ts",
   "type": "module",
   "scripts": {
-    "start": "bun App.ts",
-    "dev": "bun --watch App.ts"
+    "start": "bun -r ./alias.js dist/App.js",
+    "dev": "bun --watch App.ts",
+    "build": "tsc"
+  },
+  "_moduleAliases": {
+    "@": "dist/"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -23,6 +27,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
+    "module-alias": "^2.2.3",
     "mongoose": "^8.7.2",
     "nodemailer": "^6.9.15",
     "zod": "^3.23.8"

@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import type { ObjectId } from "mongoose";
 import bcrypt from "bcrypt";
-import dotenv from "dotenv";
 
 import User from "@/models/UserModel";
 import {
@@ -23,8 +22,6 @@ import {
   resetPasswordEmail,
   passwordResetSuccessfulEmail,
 } from "@/configs/NodeMailer/SendEmail";
-
-dotenv.config();
 
 // constants variables
 const FIFTEEN_MINUTES = 15 * 60 * 1000;

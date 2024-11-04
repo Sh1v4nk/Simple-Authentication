@@ -1,9 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import { sendErrorResponse } from "@/utils";
-
-dotenv.config();
 
 export const verifyAuthToken = (
   req: Request,

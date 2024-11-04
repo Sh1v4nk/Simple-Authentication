@@ -1,11 +1,9 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
 
 import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
 
-dotenv.config();
 const app = express();
 
 // Middleware to to parse json and cookies

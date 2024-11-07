@@ -3,3 +3,4 @@ export { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 export { Input } from "./input";
 export { PasswordInput } from "./passwordInput";
 export { Label } from "./label";
+export { Progress } from "./progress"

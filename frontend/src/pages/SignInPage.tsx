@@ -54,7 +54,7 @@ function SignInPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="auth@example.com"
+                    placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
@@ -68,6 +68,7 @@ function SignInPage() {
                 <div className="relative">
                   <PasswordInput
                     id="password"
+                    placeholder="Password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 bg-zinc-800 border-zinc-700 text-white"

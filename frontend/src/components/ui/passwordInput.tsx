@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
-    const disabled =
-      props.value === "" || props.value === undefined || props.disabled;
+    const hasValue = !!props.value;
+    const disabled = !hasValue || props.disabled;
 
     return (
       <div className="relative">
@@ -20,33 +20,35 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           {...props}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-          onClick={() => setShowPassword((prev) => !prev)}
-          disabled={disabled}
-        >
-          {showPassword && !disabled ? (
-            <EyeIcon className="h-4 w-4 text-white" aria-hidden="true" />
-          ) : (
-            <EyeOffIcon className="h-4 w-4 text-white" aria-hidden="true" />
-          )}
-          <span className="sr-only">
-            {showPassword ? "Hide password" : "Show password"}
-          </span>
-        </Button>
+        {hasValue && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            onClick={() => setShowPassword((prev) => !prev)}
+            disabled={disabled}
+          >
+            {showPassword ? (
+              <EyeIcon className="h-4 w-4 text-white" aria-hidden="true" />
+            ) : (
+              <EyeOffIcon className="h-4 w-4 text-white" aria-hidden="true" />
+            )}
+            <span className="sr-only">
+              {showPassword ? "Hide password" : "Show password"}
+            </span>
+          </Button>
+        )}
 
         {/* hides browsers password toggles */}
         <style>{`
-					.hide-password-toggle::-ms-reveal,
-					.hide-password-toggle::-ms-clear {
-						visibility: hidden;
-						pointer-events: none;
-						display: none;
-					}
-				`}</style>
+          .hide-password-toggle::-ms-reveal,
+          .hide-password-toggle::-ms-clear {
+            visibility: hidden;
+            pointer-events: none;
+            display: none;
+          }
+        `}</style>
       </div>
     );
   }

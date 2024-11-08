@@ -13,7 +13,7 @@ export default {
         sm: 'calc(var(--radius) - 4px)'
       },
       animation: {
-        'border': 'border 3s linear infinite',
+        'border': 'border 6s linear infinite',
       },
       keyframes: {
         'border': {

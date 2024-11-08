@@ -5,7 +5,7 @@ import {
   Route,
   RouterProvider,
 } from "react-router-dom";
-import { DashboardPage, SignInPage, SignUpPage } from "./pages";
+import { DashboardPage,SignUpPage, SignInPage, VerifyEmailPage } from "./pages";
 
 function App() {
   const router = createBrowserRouter(
@@ -14,6 +14,7 @@ function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/signin" element={<SignInPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
       </>
     )
   );
@@ -57,7 +58,7 @@ function App() {
         delay={5}
       />
 
-      <RouterProvider router={router} />
+      <RouterProvider router={router} future={{ v7_startTransition: true }}/>
     </div>
   );
 }

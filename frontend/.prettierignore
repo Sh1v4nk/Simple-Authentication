@@ -1,0 +1,16 @@
+node_modules
+ *.js
+ *.d.ts
+ *.md
+ *.json
+ *.lock
+ *.yml
+ *.yaml
+.vite/
+
+# Ignore build and output directories
+dist/
+build/
+
+.env
+.env.*.local

@@ -1,11 +1,17 @@
-import FloatingShape from "@/components/FloatingShape";
 import {
   createBrowserRouter,
   createRoutesFromElements,
   Route,
   RouterProvider,
 } from "react-router-dom";
-import { DashboardPage,SignUpPage, SignInPage, VerifyEmailPage } from "./pages";
+
+import {
+  DashboardPage,
+  SignUpPage,
+  SignInPage,
+  VerifyEmailPage,
+} from "@/pages";
+import FloatingShape from "@/components/FloatingShape";
 
 function App() {
   const router = createBrowserRouter(
@@ -15,12 +21,12 @@ function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-      </>
-    )
+      </>,
+    ),
   );
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
       <FloatingShape
         color="bg-gray-500"
         size="w-32 h-32 md:w-64 md:h-64"
@@ -58,7 +64,7 @@ function App() {
         delay={5}
       />
 
-      <RouterProvider router={router} future={{ v7_startTransition: true }}/>
+      <RouterProvider router={router} />
     </div>
   );
 }

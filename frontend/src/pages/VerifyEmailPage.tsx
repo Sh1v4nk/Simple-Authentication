@@ -30,7 +30,7 @@ function EmailVerifyPage() {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
     if (e.key === "Backspace" && index > 0 && code[index] === "") {
       inputRefs.current[index - 1]?.focus();
@@ -70,17 +70,20 @@ function EmailVerifyPage() {
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Verification code:", code.join(""));
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-lg w-full backdrop-filter backdrop-blur-xl shadow-xl m-4
-      [background:conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,theme(colors.purple.500)_86%,theme(colors.purple.300)_90%,theme(colors.purple.500)_94%,theme(colors.slate.600/.48))_border-box] rounded-xl border border-transparent animate-border
-      "
+      className="m-4 w-full max-w-lg animate-border rounded-xl border border-transparent shadow-xl backdrop-blur-xl backdrop-filter [background:conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,theme(colors.purple.500)_86%,theme(colors.purple.300)_90%,theme(colors.purple.500)_94%,theme(colors.slate.600/.48))_border-box]"
     >
-      <Card className="bg-black border-transparent font-poppins">
-        <CardHeader className="text-center mb-4">
+      <Card className="border-transparent bg-black font-poppins">
+        <CardHeader className="mb-4 text-center">
           <CardTitle className="text-2xl font-semibold text-white">
             Verify Your Email
           </CardTitle>
@@ -89,28 +92,29 @@ function EmailVerifyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center gap-4 mb-8">
-            {code.map((digit, index) => (
-              <Input
-                key={index}
-                type="text" // Using type="text" to allow custom handling of input validation
-                maxLength={1} // Max 1 character per field
-                value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                ref={(el) => (inputRefs.current[index] = el)}
-                className="w-12 h-12 text-center text-lg font-semibold bg-zinc-800 border-zinc-700 text-white
-                           focus:border-purple-500 focus:ring-purple-500/20 rounded-md"
-              />
-            ))}
-          </div>
-          <Button
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 rounded-lg transition-colors"
-            onClick={() => console.log("Verification code:", code.join(""))}
-          >
-            Verify Email
-          </Button>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-8 flex justify-center gap-4">
+              {code.map((digit, index) => (
+                <Input
+                  key={index}
+                  type="text"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={handlePaste}
+                  ref={(el) => (inputRefs.current[index] = el)}
+                  className="h-12 w-12 rounded-md border-zinc-700 bg-zinc-800 text-center text-lg font-semibold text-white focus:border-purple-500 focus:ring-purple-500/20"
+                />
+              ))}
+            </div>
+            <Button
+              type="submit"
+              className="w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600"
+            >
+              Verify Email
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </motion.div>

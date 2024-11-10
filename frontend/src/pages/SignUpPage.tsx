@@ -45,12 +45,11 @@ function SignUpPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-lg w-full backdrop-filter backdrop-blur-xl shadow-xl m-4
-      [background:conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,theme(colors.purple.500)_86%,theme(colors.purple.300)_90%,theme(colors.purple.500)_94%,theme(colors.slate.600/.48))_border-box] rounded-xl border border-transparent animate-border"
+      className="m-4 w-full max-w-lg animate-border rounded-xl border border-transparent shadow-xl backdrop-blur-xl backdrop-filter [background:conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,theme(colors.purple.500)_86%,theme(colors.purple.300)_90%,theme(colors.purple.500)_94%,theme(colors.slate.600/.48))_border-box]"
     >
-      <Card className="bg-black border-transparent font-poppins">
+      <Card className="border-transparent bg-black font-poppins">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-white">
+          <CardTitle className="text-center text-2xl font-bold text-white">
             Create Account
           </CardTitle>
           <CardDescription className="text-center text-zinc-400">
@@ -60,9 +59,9 @@ function SignUpPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+              <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
               <Input
-                className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
+                className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder-zinc-500"
                 placeholder="User Name"
                 type="text"
               />
@@ -71,9 +70,9 @@ function SignUpPage() {
 
           <div className="space-y-2">
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+              <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
               <Input
-                className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
+                className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder-zinc-500"
                 placeholder="Email Address"
                 type="email"
               />
@@ -83,7 +82,7 @@ function SignUpPage() {
           <div className="space-y-2">
             <div className="relative">
               <PasswordInput
-                className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
+                className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder-zinc-500"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -94,15 +93,11 @@ function SignUpPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">Password strength</span>
                 <span
-                  className={`
-                    ${getPasswordStrength() <= 20 ? "text-red-500" : ""}
-                    ${
-                      getPasswordStrength() > 20 && getPasswordStrength() <= 60
-                        ? "text-yellow-500"
-                        : ""
-                    }
-                    ${getPasswordStrength() > 60 ? "text-emerald-500" : ""}
-                  `}
+                  className={` ${getPasswordStrength() <= 20 ? "text-red-500" : ""} ${
+                    getPasswordStrength() > 20 && getPasswordStrength() <= 60
+                      ? "text-yellow-500"
+                      : ""
+                  } ${getPasswordStrength() > 60 ? "text-emerald-500" : ""} `}
                 >
                   {getStrengthText(getPasswordStrength())}
                 </span>
@@ -133,14 +128,14 @@ function SignUpPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button className="w-full bg-purple-500 hover:bg-purple-600 transition-colors">
+          <Button className="w-full bg-purple-500 transition-colors hover:bg-purple-600">
             Sign Up
           </Button>
           <div className="text-center text-sm text-zinc-400">
             Already have an account?{" "}
             <Link
               to="/signin"
-              className="text-purple-400 hover:text-purple-300 transition-colors"
+              className="text-purple-400 transition-colors hover:text-purple-300"
             >
               Sign In
             </Link>

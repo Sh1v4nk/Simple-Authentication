@@ -13,7 +13,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
 
     return (
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+        <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
         <Input
           type={showPassword ? "text" : "password"}
           className={cn("hide-password-toggle pr-10", className)}
@@ -51,7 +51,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
         `}</style>
       </div>
     );
-  }
+  },
 );
 PasswordInput.displayName = "PasswordInput";
 

@@ -6,10 +6,10 @@ export interface IUser extends Document {
   username: string;
   lastLogin: Date;
   isVerified: boolean;
-  resetPasswordToken?: string | undefined;
-  resetPasswordTokenExpiresAt?: Date | undefined;
-  emailVerificationToken?: string | undefined;
-  emailVerificationTokenExpiresAt?: Date | undefined;
+  resetPasswordToken?: string;
+  resetPasswordTokenExpiresAt?: Date;
+  emailVerificationToken?: string;
+  emailVerificationTokenExpiresAt?: Date;
 }
 
 // Extend the Request interface

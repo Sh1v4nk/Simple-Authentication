@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import User from "@/models/UserModel";
 import {
   signUpValidation,
+  emailCodeValidation,
   signInValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
@@ -91,9 +92,18 @@ export const verifyEmail = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { emailCode } = req.body;
-
   try {
+    const result = emailCodeValidation.safeParse(req.body);
+
+    if (!result.success) {
+      
+      sendErrorResponse(res, "Invalid Verification Code", 400, {
+        errors: result.error.errors,
+      });
+      return;
+    }
+    const { emailCode } = result.data;
+
     const user = await User.findOne({
       emailVerificationToken: emailCode,
       emailVerificationTokenExpiresAt: { $gt: Date.now() },

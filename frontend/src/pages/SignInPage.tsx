@@ -25,7 +25,7 @@ function SignInPage() {
   };
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="m-4 w-full max-w-lg animate-border rounded-xl border border-transparent shadow-xl backdrop-blur-xl backdrop-filter [background:conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,theme(colors.purple.500)_86%,theme(colors.purple.300)_90%,theme(colors.purple.500)_94%,theme(colors.slate.600/.48))_border-box]"
@@ -54,7 +54,7 @@ function SignInPage() {
                     placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder-zinc-500"
+                    className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                   />
                 </div>
               </div>
@@ -68,7 +68,7 @@ function SignInPage() {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="border-zinc-700 bg-zinc-800 pl-10 text-white"
+                    className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                   />
                 </div>
               </div>

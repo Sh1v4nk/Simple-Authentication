@@ -96,7 +96,6 @@ export const verifyEmail = async (
     const result = emailCodeValidation.safeParse(req.body);
 
     if (!result.success) {
-      
       sendErrorResponse(res, "Invalid Verification Code", 400, {
         errors: result.error.errors,
       });

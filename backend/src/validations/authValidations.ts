@@ -33,15 +33,20 @@ export const signInValidation = z.object({
   password: passwordValidation,
 });
 
-export const emailCodeValidation= z.object({
-  emailCode: z.string().length(6, {message:"Verification code must be exactly 6 characters long"})
-})
+export const emailCodeValidation = z.object({
+  emailCode: z.string().length(6, {
+    message: "Verification code must be exactly 6 characters long",
+  }),
+});
 
 export const forgotPasswordValidation = z.object({
   email: emailValidation,
 });
 
 export const resetPasswordValidation = z.object({
-  token: z.string().min(32,{ message: "Token must be at least 32 characters long" }).max(40),
+  token: z
+    .string()
+    .min(32, { message: "Token must be at least 32 characters long" })
+    .max(40),
   password: passwordValidation,
 });

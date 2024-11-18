@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Button,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 
 function EmailVerifyPage() {
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, value: string) => {
@@ -49,7 +49,10 @@ function EmailVerifyPage() {
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
 
-    const paste = e.clipboardData.getData("Text").slice(0, 6);
+    const paste = e.clipboardData
+      .getData("Text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     const newCode = paste.split("");
 
     setCode((prevCode) => {
@@ -62,18 +65,30 @@ function EmailVerifyPage() {
       return updatedCode;
     });
 
-    const nextEmptyBox = paste.length;
-    if (nextEmptyBox === 6) {
-      inputRefs.current[5]?.focus();
+    const nextEmptyBox = Math.min(paste.length, 5);
+    if (paste.length === 6) {
+      (e.target as HTMLInputElement).blur();
     } else {
       inputRefs.current[nextEmptyBox]?.focus();
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitOTP = (): void => {
     console.log("Verification code:", code.join(""));
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitOTP();
+  };
+
+  // Auto submit when all OTP fields are filled
+  useEffect(() => {
+    if (code.every((digit) => digit !== "")) {
+      submitOTP();
+      inputRefs.current.forEach((input) => input?.blur());
+    }
+  }, [code]);
 
   return (
     <motion.div

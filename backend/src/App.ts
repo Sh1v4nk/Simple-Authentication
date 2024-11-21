@@ -1,12 +1,13 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 
 import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
 
 const app = express();
 
-// Middleware to to parse json and cookies
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 

@@ -73,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
               }
               return acc;
             },
+            {},
           );
 
           set((state) => ({

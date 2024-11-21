@@ -108,17 +108,18 @@ function SignUpPage() {
                   required
                 />
               </div>
-              {generalErrors?.map((error: string, index: number) => (
-                <p key={index} className="text-sm text-red-500">
-                  {error}
-                </p> // This will render each error on a new line
-              ))}
-
-              {passwordError?.map((error: string, index: number) => (
-                <p key={index} className="text-sm text-red-500">
-                  {error}
-                </p> // This will render each error on a new line
-              ))}
+              {/* Display Password Errors */}
+              {passwordError && passwordError.length > 0
+                ? passwordError.map((error, index) => (
+                    <p key={index} className="text-sm text-red-500">
+                      {error}
+                    </p>
+                  ))
+                : generalErrors?.map((error, index) => (
+                    <p key={index} className="text-sm text-red-500">
+                      {error}
+                    </p>
+                  ))}
 
               {/* Password Strength Checker */}
               <PasswordStrengthChecker password={password} />

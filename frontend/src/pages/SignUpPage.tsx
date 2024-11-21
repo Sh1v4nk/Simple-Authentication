@@ -24,7 +24,14 @@ function SignUpPage() {
   const [password, setPassword] = useState("");
 
   const navigate = useNavigate();
-  const { signup, error, isLoading } = useAuthStore();
+  const {
+    signup,
+    isLoading,
+    emailError,
+    passwordError,
+    usernameError,
+    generalErrors,
+  } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +74,9 @@ function SignUpPage() {
                   required
                 />
               </div>
+              {usernameError && (
+                <p className="text-sm text-red-500">{usernameError}</p>
+              )}
             </div>
 
             {/* Email Input */}
@@ -82,6 +92,9 @@ function SignUpPage() {
                   required
                 />
               </div>
+              {emailError && (
+                <p className="text-sm text-red-500">{emailError}</p>
+              )}
             </div>
 
             {/* Password Input */}
@@ -95,14 +108,21 @@ function SignUpPage() {
                   required
                 />
               </div>
+              {generalErrors?.map((error: string, index: number) => (
+                <p key={index} className="text-sm text-red-500">
+                  {error}
+                </p> // This will render each error on a new line
+              ))}
+
+              {passwordError?.map((error: string, index: number) => (
+                <p key={index} className="text-sm text-red-500">
+                  {error}
+                </p> // This will render each error on a new line
+              ))}
+
               {/* Password Strength Checker */}
               <PasswordStrengthChecker password={password} />
             </div>
-
-            {/* Error Message */}
-            {error && (
-              <p className="text-center text-sm text-red-500">{error}</p>
-            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             {/* Submit Button */}

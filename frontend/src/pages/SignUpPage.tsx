@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Button,
@@ -33,10 +34,30 @@ function SignUpPage() {
     generalErrors,
   } = useAuthStore();
 
+  const formattedDate = new Date().toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: true,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await signup(email, password, username);
+      toast.success("Sign up successful", {
+        description: formattedDate,
+        cancel: {
+          label: "Close",
+          onClick: () => {
+            toast.dismiss();
+          },
+        },
+      });
       navigate("/verify-email");
     } catch (error) {
       console.error("Signup error:", error);

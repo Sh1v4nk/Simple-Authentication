@@ -1,3 +1,4 @@
+import { Toaster } from "sonner";
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -27,6 +28,7 @@ function App() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
+      <Toaster theme="dark" />
       <FloatingShape
         color="bg-gray-500"
         size="w-32 h-32 md:w-64 md:h-64"

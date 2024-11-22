@@ -12,7 +12,7 @@ import { verifyAuthToken } from "@/middlewares/verifyToken";
 
 const router = express.Router();
 
-router.get("/verify-token", verifyAuthToken, verifyAuth);
+router.get("/verify-auth", verifyAuthToken, verifyAuth);
 
 router.post("/signup", signup);
 router.post("/signin", signin);

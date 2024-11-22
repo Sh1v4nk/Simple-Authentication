@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail } from "lucide-react";
+import { Mail, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Button,
   Card,
@@ -14,14 +15,44 @@ import {
   Label,
   PasswordInput,
 } from "@/components/ui";
+import { useAuthStore } from "@/store/authStore";
 
 function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signin, isLoading, emailError, passwordError, generalErrors } =
+    useAuthStore();
+  const navigate = useNavigate();
+
+  const formattedDate = new Date().toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: true,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // console.log("Login attempt with:", email, password);
+    try {
+      await signin(email, password);
+      toast.success("Sign in successful", {
+        description: formattedDate,
+        cancel: {
+          label: "Close",
+          onClick: () => {
+            toast.dismiss();
+          },
+        },
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Signip error:", error);
+    }
   };
   return (
     <motion.div
@@ -57,6 +88,9 @@ function SignInPage() {
                     className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                   />
                 </div>
+                {emailError && (
+                  <p className="text-sm text-red-500">{emailError}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password" className="text-white">
@@ -71,12 +105,33 @@ function SignInPage() {
                     className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                   />
                 </div>
+                {passwordError && passwordError.length > 0
+                  ? passwordError.map((error, index) => (
+                      <p key={index} className="text-sm text-red-500">
+                        {error}
+                      </p>
+                    ))
+                  : generalErrors?.map((error, index) => (
+                      <p key={index} className="text-sm text-red-500">
+                        {error}
+                      </p>
+                    ))}
               </div>
               <Button
                 type="submit"
-                className="w-full bg-purple-500 transition-colors hover:bg-purple-600"
+                className={`w-full bg-purple-500 transition-colors hover:bg-purple-600 ${
+                  isLoading ? "pointer-events-none opacity-50" : ""
+                }`}
+                disabled={isLoading}
               >
-                Sign In
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Sign Up"
+                )}
               </Button>
             </div>
           </form>

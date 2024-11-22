@@ -28,6 +28,9 @@ export interface AuthState {
   usernameError: string[] | null;
 
   signup: (email: string, password: string, username: string) => Promise<void>;
+  signin: (email: string, password: string) => Promise<void>;
+  verifyEmail: (emailCode: string) => Promise<void>;
+  verifyAuth: () => Promise<void>;
 }
 
 // ValidationError interface

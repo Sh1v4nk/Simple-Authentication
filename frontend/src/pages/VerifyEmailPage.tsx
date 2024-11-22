@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   Button,
   Input,
@@ -9,10 +13,13 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui";
+import { useAuthStore } from "@/store/authStore";
 
 function EmailVerifyPage() {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const { verifyEmail, isLoading, generalErrors } = useAuthStore();
+  const navigate = useNavigate();
 
   const handleChange = (index: number, value: string) => {
     // Allow only digits and limit to a single character per input
@@ -73,8 +80,22 @@ function EmailVerifyPage() {
     }
   };
 
-  const submitOTP = (): void => {
-    console.log("Verification code:", code.join(""));
+  const submitOTP = async (): Promise<void> => {
+    const verificationCode = code.join("");
+    try {
+      await verifyEmail(verificationCode);
+      toast.success("Email verification successful", {
+        cancel: {
+          label: "Close",
+          onClick: () => {
+            toast.dismiss();
+          },
+        },
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Email Verification error:", error);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -123,11 +144,29 @@ function EmailVerifyPage() {
                 />
               ))}
             </div>
+            {generalErrors?.map((error, index) => (
+              <p
+                key={index}
+                className="-mt-4 mb-4 text-center text-sm text-red-500"
+              >
+                {error}
+              </p>
+            ))}
             <Button
               type="submit"
-              className="w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600"
+              className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600 ${
+                isLoading ? "pointer-events-none opacity-50" : ""
+              }`}
+              disabled={isLoading}
             >
-              Verify Email
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
+                  Verifying Email...
+                </>
+              ) : (
+                "Verify Email"
+              )}
             </Button>
           </form>
         </CardContent>

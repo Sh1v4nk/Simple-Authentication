@@ -18,6 +18,7 @@ import {
 
 import PasswordStrengthChecker from "@/components/PasswordStrengthChecker";
 import { useAuthStore } from "@/store/authStore";
+import { formatDate } from "@/utils/dateUtils";
 
 function SignUpPage() {
   const [username, setUsername] = useState("");
@@ -34,23 +35,12 @@ function SignUpPage() {
     generalErrors,
   } = useAuthStore();
 
-  const formattedDate = new Date().toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: true,
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await signup(email, password, username);
       toast.success("Sign up successful", {
-        description: formattedDate,
+        description: formatDate(),
         cancel: {
           label: "Close",
           onClick: () => {

@@ -14,6 +14,7 @@ interface User {
   createdAt: Date;
   updatedAt: Date;
 }
+
 // authStore interface
 export interface AuthState {
   user: User | null;

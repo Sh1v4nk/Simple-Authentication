@@ -16,6 +16,7 @@ import {
   PasswordInput,
 } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
+import { formatDate } from "@/utils/dateUtils";
 
 function SignInPage() {
   const [email, setEmail] = useState("");
@@ -25,23 +26,12 @@ function SignInPage() {
     useAuthStore();
   const navigate = useNavigate();
 
-  const formattedDate = new Date().toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: true,
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await signin(email, password);
       toast.success("Sign in successful", {
-        description: formattedDate,
+        description: formatDate(),
         cancel: {
           label: "Close",
           onClick: () => {

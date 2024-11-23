@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
-import { AuthState, ValidationError } from "@/types";
+import { AuthState } from "@/types";
+import { handleError } from "@/utils/handelErrors";
 
 const API_URL =
   import.meta.env.MODE === "development"
@@ -47,55 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         generalErrors: [],
       });
     } catch (error) {
-      set({ isLoading: false });
-
-      if (axios.isAxiosError(error)) {
-        const { data } = error.response!;
-
-        // Handle validation errors
-        if (data.errors) {
-          const validationErrors = data.errors || [];
-
-          const fieldErrors = validationErrors.reduce(
-            (
-              acc: Record<keyof AuthState, string[] | null>,
-              err: ValidationError,
-            ) => {
-              const field = err.path?.[0]; // Getting the field name (e.g., "email" or "username")
-
-              if (field) {
-                const key = `${field}Error` as keyof AuthState;
-                if (acc[key]) {
-                  acc[key]?.push(err.message);
-                } else {
-                  acc[key] = [err.message];
-                }
-              }
-              return acc;
-            },
-            {},
-          );
-
-          set((state) => ({
-            ...state,
-            ...fieldErrors,
-            isLoading: false,
-          }));
-        }
-
-        if (data.success === false && data.message) {
-          set({
-            generalErrors: [data.message],
-            isLoading: false,
-          });
-        }
-      } else {
-        set({
-          error: "An unexpected error occurred. Please try again later.",
-          isLoading: false,
-        });
-      }
-      throw error;
+      handleError(error, set);
     }
   },
 
@@ -111,7 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
 
     try {
-      const response = await axios.post(`${API_URL}/signup`, {
+      const response = await axios.post(`${API_URL}/signin`, {
         email,
         password,
       });
@@ -124,54 +77,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         generalErrors: [],
       });
     } catch (error) {
-      set({ isLoading: false });
-
-      if (axios.isAxiosError(error)) {
-        const { data } = error.response!;
-
-        if (data.errors) {
-          const validationErrors = data.errors || [];
-
-          const fieldErrors = validationErrors.reduce(
-            (
-              acc: Record<keyof AuthState, string[] | null>,
-              err: ValidationError,
-            ) => {
-              const field = err.path?.[0];
-
-              if (field) {
-                const key = `${field}Error` as keyof AuthState;
-                if (acc[key]) {
-                  acc[key]?.push(err.message);
-                } else {
-                  acc[key] = [err.message];
-                }
-              }
-              return acc;
-            },
-            {},
-          );
-
-          set((state) => ({
-            ...state,
-            ...fieldErrors,
-            isLoading: false,
-          }));
-        }
-
-        if (data.success === false && data.message) {
-          set({
-            generalErrors: [data.message],
-            isLoading: false,
-          });
-        }
-      } else {
-        set({
-          error: "An unexpected error occurred. Please try again later.",
-          isLoading: false,
-        });
-      }
-      throw error;
+      handleError(error, set);
     }
   },
 
@@ -190,23 +96,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       return response.data;
     } catch (error) {
-      set({ isLoading: false });
-
-      if (axios.isAxiosError(error)) {
-        const { data } = error.response!;
-        if (data.success === false && data.message) {
-          set({
-            generalErrors: [data.message],
-            isLoading: false,
-          });
-        }
-      } else {
-        set({
-          error: "An unexpected error occurred. Please try again later.",
-          isLoading: false,
-        });
-      }
-      throw error;
+      handleError(error, set);
     }
   },
 

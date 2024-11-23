@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 import {
   Button,
@@ -15,9 +15,14 @@ import {
 
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Simulate sending the email
+    setTimeout(() => {
+      setIsSubmitted(true); // Set the state to show the success view
+    }, 1000); // Simulate a delay for sending email
   };
 
   return (
@@ -33,39 +38,60 @@ function ForgotPasswordPage() {
             Forgot Password
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            Enter your email address to reset your passsword.
+            {!isSubmitted
+              ? "Enter your email address to reset your password."
+              : "Check your inbox for the password reset link."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4">
-              <div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
-                  />
+          {!isSubmitted ? (
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4">
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Email Address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
+                      required
+                    />
+                  </div>
                 </div>
+                <Button
+                  type="submit"
+                  className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600`}
+                >
+                  Send Reset Link
+                </Button>
               </div>
-              <Button
-                type="submit"
-                className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600`}
+            </form>
+          ) : (
+            <div className="text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500"
               >
-                Send Reset Link
-              </Button>
+                <CheckCircle className="h-8 w-8 text-white" />
+              </motion.div>
+              <p className="mb-6 text-zinc-400">
+                If an account exists for{" "}
+                <span className="font-semibold text-white">{email}</span>, you
+                will receive a password reset link shortly.
+              </p>
             </div>
-          </form>
+          )}
           <div className="mt-4 text-center text-sm">
             <Link
               to="/signin"
               className="flex items-center justify-center text-center text-purple-400 transition-colors hover:text-purple-300"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Sign In
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Sign In
             </Link>
           </div>
         </CardContent>

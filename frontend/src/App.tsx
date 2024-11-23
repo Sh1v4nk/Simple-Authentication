@@ -11,6 +11,7 @@ import {
   SignUpPage,
   SignInPage,
   VerifyEmailPage,
+  ForgotPasswordPage,
 } from "@/pages";
 import FloatingShape from "@/components/FloatingShape";
 
@@ -22,6 +23,7 @@ function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </>,
     ),
   );

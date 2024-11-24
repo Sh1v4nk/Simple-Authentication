@@ -56,10 +56,7 @@ function EmailVerifyPage() {
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
 
-    const paste = e.clipboardData
-      .getData("Text")
-      .replace(/\D/g, "")
-      .slice(0, 6);
+    const paste = e.clipboardData.getData("Text").replace(/\D/g, "").slice(0, 6);
     const newCode = paste.split("");
 
     setCode((prevCode) => {
@@ -145,10 +142,7 @@ function EmailVerifyPage() {
               ))}
             </div>
             {generalErrors?.map((error, index) => (
-              <p
-                key={index}
-                className="-mt-4 mb-4 text-center text-sm text-red-500"
-              >
+              <p key={index} className="-mt-4 mb-4 text-center text-sm text-red-500">
                 {error}
               </p>
             ))}

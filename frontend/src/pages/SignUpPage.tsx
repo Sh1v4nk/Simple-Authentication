@@ -103,9 +103,7 @@ function SignUpPage() {
                   required
                 />
               </div>
-              {emailError && (
-                <p className="text-sm text-red-500">{emailError}</p>
-              )}
+              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
             </div>
 
             {/* Password Input */}

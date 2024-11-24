@@ -81,8 +81,8 @@ function ForgotPasswordPage() {
               </motion.div>
               <p className="mb-6 text-zinc-400">
                 If an account exists for{" "}
-                <span className="font-semibold text-white">{email}</span>, you
-                will receive a password reset link shortly.
+                <span className="font-semibold text-white">{email}</span>, you will
+                receive a password reset link shortly.
               </p>
             </div>
           )}

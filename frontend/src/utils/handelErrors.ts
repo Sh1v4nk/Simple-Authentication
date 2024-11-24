@@ -17,10 +17,7 @@ export const handleError = (
       const validationErrors = data.errors || [];
 
       const fieldErrors = validationErrors.reduce(
-        (
-          acc: Record<keyof AuthState, string[] | null>,
-          err: ValidationError,
-        ) => {
+        (acc: Record<keyof AuthState, string[] | null>, err: ValidationError) => {
           const field = err.path?.[0]; // Getting the field name (e.g., "email" or "username")
 
           if (field) {

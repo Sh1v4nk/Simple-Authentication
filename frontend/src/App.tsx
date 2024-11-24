@@ -25,11 +25,7 @@ function App() {
     verifyAuth();
   }, [verifyAuth]);
 
-  const RedirectIfAuthenticated = ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => {
+  const RedirectIfAuthenticated = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated && user?.isVerified) {
       return <Navigate to="/" replace />;
     }

@@ -45,41 +45,41 @@ function ForgotPasswordPage() {
         </CardHeader>
         <CardContent>
           {!isSubmitted ? (
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4">
-                <div>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Email Address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
-                      required
-                    />
-                  </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
+                    required
+                  />
                 </div>
-                <Button
-                  type="submit"
-                  className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600`}
-                >
-                  Send Reset Link
-                </Button>
+                {/* Error message here */}
+                {/* <p className="text-sm text-red-500">Invalid email address</p> */}
               </div>
+              <Button
+                type="submit"
+                className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600`}
+              >
+                Send Reset Link
+              </Button>
             </form>
           ) : (
-            <div className="text-center">
+            <div className="space-y-6 text-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500"
+                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-purple-500"
               >
                 <CheckCircle className="h-8 w-8 text-white" />
               </motion.div>
-              <p className="mb-6 text-zinc-400">
+              <p className="text-zinc-400">
                 If an account exists for{" "}
                 <span className="font-semibold text-white">{email}</span>, you will
                 receive a password reset link shortly.

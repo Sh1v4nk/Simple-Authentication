@@ -1,9 +1,9 @@
 import { Loader2 } from "lucide-react";
 const LoadingSpinner = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center overflow-hidden bg-black">
+    <div>
       <Loader2
-        className="h-10 w-10 animate-spin text-white"
+        className="h-12 w-12 animate-spin text-white"
         aria-label="Loading..."
       />
       ;

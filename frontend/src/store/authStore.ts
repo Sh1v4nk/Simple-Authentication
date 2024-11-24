@@ -100,6 +100,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  forgotPassword: async () => {},
+
   verifyAuth: async () => {
     set({ isCheckingAuth: true, error: null });
     try {

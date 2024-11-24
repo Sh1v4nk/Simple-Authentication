@@ -16,16 +16,21 @@ import {
   ForgotPasswordPage,
 } from "@/pages";
 import FloatingShape from "@/components/FloatingShape";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuthStore } from "@/store/authStore";
 
+interface ChildrenProps {
+  children: React.ReactNode;
+}
+
 function App() {
-  const { verifyAuth, isAuthenticated, user } = useAuthStore();
+  const { verifyAuth, isAuthenticated, isCheckingAuth, user } = useAuthStore();
 
   useEffect(() => {
     verifyAuth();
   }, [verifyAuth]);
 
-  const RedirectIfAuthenticated = ({ children }: { children: React.ReactNode }) => {
+  const RedirectIfAuthenticated = ({ children }: ChildrenProps) => {
     if (isAuthenticated && user?.isVerified) {
       return <Navigate to="/" replace />;
     }
@@ -33,7 +38,7 @@ function App() {
     return children;
   };
 
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const ProtectedRoute = ({ children }: ChildrenProps) => {
     if (!isAuthenticated) {
       return <Navigate to="/signin" replace />;
     }
@@ -125,7 +130,7 @@ function App() {
         delay={5}
       />
 
-      <RouterProvider router={router} />
+      {isCheckingAuth ? <LoadingSpinner /> : <RouterProvider router={router} />}
     </div>
   );
 }

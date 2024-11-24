@@ -30,6 +30,7 @@ function SignInPage() {
     e.preventDefault();
     try {
       await signin(email, password);
+      navigate("/");
       toast.success("Sign in successful", {
         description: formatDate(),
         cancel: {
@@ -39,7 +40,6 @@ function SignInPage() {
           },
         },
       });
-      navigate("/");
     } catch (error) {
       console.error("Signip error:", error);
     }
@@ -120,7 +120,7 @@ function SignInPage() {
                     Signing In...
                   </>
                 ) : (
-                  "Sign Up"
+                  "Sign In"
                 )}
               </Button>
             </div>

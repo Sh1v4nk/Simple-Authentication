@@ -10,9 +10,9 @@ export interface FloartingShpaeInterface {
 interface User {
   username: string;
   email: string;
-  password: string;
   createdAt: Date;
   updatedAt: Date;
+  isVerified: boolean;
 }
 
 // authStore interface

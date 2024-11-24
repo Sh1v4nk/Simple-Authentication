@@ -110,7 +110,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         isCheckingAuth: false,
       });
     } catch (error) {
-      set({ error: null, isCheckingAuth: false, isAuthenticated: false });
+      set({
+        error: null,
+        isCheckingAuth: false,
+        isAuthenticated: false,
+        user: null,
+      });
     }
   },
 }));

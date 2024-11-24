@@ -304,8 +304,10 @@ export const verifyAuth = async (
     }
 
     sendSuccessResponse(res, "User found", {
-      ...user.toObject(),
-      password: undefined,
+      user: {
+        ...user.toObject({versionKey: false}),
+        password: undefined,
+      },
     });
   } catch (error: unknown) {
     const message =

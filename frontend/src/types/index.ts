@@ -7,6 +7,11 @@ export interface FloartingShpaeInterface {
   delay: number;
 }
 
+// Children prop for route guards
+export interface RouteGuardProps {
+  children: React.ReactNode;
+}
+
 interface User {
   username: string;
   email: string;
@@ -30,6 +35,7 @@ export interface AuthState {
 
   signup: (email: string, password: string, username: string) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   verifyEmail: (emailCode: string) => Promise<void>;
   verifyAuth: () => Promise<void>;
 }

@@ -1,94 +1,18 @@
 import { useEffect } from "react";
 import { Toaster } from "sonner";
-import {
-  createBrowserRouter,
-  createRoutesFromElements,
-  Route,
-  RouterProvider,
-  Navigate,
-} from "react-router-dom";
+import { RouterProvider } from "react-router-dom";
 
-import {
-  DashboardPage,
-  SignUpPage,
-  SignInPage,
-  VerifyEmailPage,
-  ForgotPasswordPage,
-} from "@/pages";
+import { router } from "@/routes/router";
 import FloatingShape from "@/components/FloatingShape";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuthStore } from "@/store/authStore";
 
-interface ChildrenProps {
-  children: React.ReactNode;
-}
-
 function App() {
-  const { verifyAuth, isAuthenticated, isCheckingAuth, user } = useAuthStore();
+  const { verifyAuth, isCheckingAuth } = useAuthStore();
 
   useEffect(() => {
     verifyAuth();
   }, [verifyAuth]);
-
-  const RedirectIfAuthenticated = ({ children }: ChildrenProps) => {
-    if (isAuthenticated && user?.isVerified) {
-      return <Navigate to="/" replace />;
-    }
-
-    return children;
-  };
-
-  const ProtectedRoute = ({ children }: ChildrenProps) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/signin" replace />;
-    }
-
-    if (!user?.isVerified) {
-      return <Navigate to="/verify-email" replace />;
-    }
-
-    return children;
-  };
-
-  const router = createBrowserRouter(
-    createRoutesFromElements(
-      <>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <RedirectIfAuthenticated>
-              <SignUpPage />
-            </RedirectIfAuthenticated>
-          }
-        />
-        <Route
-          path="/signin"
-          element={
-            <RedirectIfAuthenticated>
-              <SignInPage />
-            </RedirectIfAuthenticated>
-          }
-        />
-        <Route
-          path="/verify-email"
-          element={
-            <ProtectedRoute>
-              <VerifyEmailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      </>,
-    ),
-  );
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">

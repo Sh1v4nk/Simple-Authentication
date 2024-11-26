@@ -89,11 +89,9 @@ function ResetPasswordPage() {
                     className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                   />
                 </div>
+
                 {passwordMatchError && (
                   <p className="text-sm text-red-500">Passwords do not match</p>
-                )}
-                {tokenError && (
-                  <p className="text-sm text-red-500">{tokenError[0]}</p>
                 )}
                 {passwordError && passwordError.length > 0
                   ? passwordError.map((error, index) => (
@@ -106,6 +104,10 @@ function ResetPasswordPage() {
                         {error}
                       </p>
                     ))}
+
+                {tokenError && tokenError[0] && (
+                  <p className="text-sm text-red-500">{tokenError[0]}</p>
+                )}
               </div>
               <Button
                 type="submit"

@@ -41,14 +41,7 @@ export const router = createBrowserRouter(
           </RedirectIfAuthenticated>
         }
       />
-      <Route
-        path="/verify-email"
-        element={
-          <ProtectedRoute>
-            <VerifyEmailPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route
         path="/forgot-password"
         element={
@@ -57,7 +50,14 @@ export const router = createBrowserRouter(
           </RedirectIfAuthenticated>
         }
       />
-      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+      <Route
+        path="/reset-password/:token"
+        element={
+          <RedirectIfAuthenticated>
+            <ResetPasswordPage />
+          </RedirectIfAuthenticated>
+        }
+      />
     </>,
   ),
 );

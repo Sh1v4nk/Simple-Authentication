@@ -32,10 +32,12 @@ export interface AuthState {
   emailError: string[] | null;
   passwordError: string[] | null;
   usernameError: string[] | null;
+  tokenError: string[] | null;
 
   signup: (email: string, password: string, username: string) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
   verifyEmail: (emailCode: string) => Promise<void>;
   verifyAuth: () => Promise<void>;
 }

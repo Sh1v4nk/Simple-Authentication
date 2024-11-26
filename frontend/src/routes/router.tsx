@@ -10,6 +10,7 @@ import {
   SignInPage,
   VerifyEmailPage,
   ForgotPasswordPage,
+  ResetPasswordPage,
 } from "@/pages";
 import { ProtectedRoute, RedirectIfAuthenticated } from "./routeGuards";
 
@@ -48,7 +49,15 @@ export const router = createBrowserRouter(
           </ProtectedRoute>
         }
       />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route
+        path="/forgot-password"
+        element={
+          <RedirectIfAuthenticated>
+            <ForgotPasswordPage />
+          </RedirectIfAuthenticated>
+        }
+      />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
     </>,
   ),
 );

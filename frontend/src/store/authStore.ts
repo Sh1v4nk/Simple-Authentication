@@ -21,6 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   emailError: null,
   passwordError: null,
   usernameError: null,
+  tokenError: [],
 
   signup: async (email, password, username) => {
     set({
@@ -100,7 +101,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  forgotPassword: async () => {},
+  forgotPassword: async (email) => {
+    set({ isLoading: true, error: null, emailError: null, message: null });
+    try {
+      const response = await axios.post(`${API_URL}/forgot-password`, { email });
+      set({ isLoading: false, message: response.data.message });
+    } catch (error) {
+      handleError(error, set);
+    }
+  },
+
+  resetPassword: async (token, password) => {
+    set({ isLoading: true, error: null, passwordError: null, });
+    try {
+      const response = await axios.post(`${API_URL}/reset-password/${token}`, {
+        password,
+      });
+      set({ isLoading: false, message: response.data.message, generalErrors: [], tokenError: [] });
+    } catch (error) {
+      handleError(error, set);
+    }
+  },
 
   verifyAuth: async () => {
     set({ isCheckingAuth: true, error: null });

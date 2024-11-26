@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+import { Mail, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
 import {
   Button,
@@ -12,17 +13,25 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui";
+import { useAuthStore } from "@/store/authStore";
+import { formatDate } from "@/utils/dateUtils";
 
 function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const { forgotPassword, isLoading, emailError, message } = useAuthStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate sending the email
-    setTimeout(() => {
-      setIsSubmitted(true); // Set the state to show the success view
-    }, 1000); // Simulate a delay for sending email
+    await forgotPassword(email);
+    toast.success("Password Reset Link Sent", {
+      description: formatDate(),
+      cancel: {
+        label: "Close",
+        onClick: () => {
+          toast.dismiss();
+        },
+      },
+    });
   };
 
   return (
@@ -38,13 +47,13 @@ function ForgotPasswordPage() {
             Forgot Password
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            {!isSubmitted
+            {!message
               ? "Enter your email address to reset your password."
               : "Check your inbox for the password reset link."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isSubmitted ? (
+          {!message ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <div className="relative">
@@ -59,14 +68,23 @@ function ForgotPasswordPage() {
                     required
                   />
                 </div>
-                {/* Error message here */}
-                {/* <p className="text-sm text-red-500">Invalid email address</p> */}
+                {emailError && <p className="text-sm text-red-500">{emailError}</p>}
               </div>
               <Button
                 type="submit"
-                className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600`}
+                className={`w-full rounded-lg bg-purple-500 py-2 font-medium transition-colors hover:bg-purple-600 ${
+                  isLoading ? "pointer-events-none opacity-50" : ""
+                }`}
+                disabled={isLoading}
               >
-                Send Reset Link
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
+                    Sending Reset Link..
+                  </>
+                ) : (
+                  "Send Reset Link"
+                )}
               </Button>
             </form>
           ) : (

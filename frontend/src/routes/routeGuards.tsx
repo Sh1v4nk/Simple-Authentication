@@ -8,7 +8,7 @@ export const ProtectedRoute = ({ children }: RouteGuardProps) => {
     return <Navigate to="/signin" replace />;
   }
 
-  if (!user?.isVerified) {
+  if (user && !user.isVerified) {
     return <Navigate to="/verify-email" replace />;
   }
 

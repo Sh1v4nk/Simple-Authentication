@@ -46,7 +46,6 @@ export const forgotPasswordValidation = z.object({
 export const resetPasswordValidation = z.object({
   token: z
     .string()
-    .min(32, { message: "Token must be at least 32 characters long" })
-    .max(40),
+    .length(40, { message: "Token must be exactly 40 characters long" }),
   password: passwordValidation,
 });

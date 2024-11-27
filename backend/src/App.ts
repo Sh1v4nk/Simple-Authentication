@@ -7,7 +7,15 @@ import AuthRoute from "@/routes/AuthRouter";
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+const corsOptions = {
+  origin:
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:5173"
+      : process.env.CLIENT_URL,
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 

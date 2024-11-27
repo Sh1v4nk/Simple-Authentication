@@ -137,7 +137,7 @@ function EmailVerifyPage() {
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
                   ref={(el) => (inputRefs.current[index] = el)}
-                  className="h-12 w-12 rounded-md border-zinc-700 bg-zinc-800 text-center text-lg font-semibold text-white focus:border-purple-500 focus:ring-purple-500/20"
+                  className="h-12 w-12 rounded-md border-zinc-700 bg-zinc-800 text-center text-lg font-semibold text-white focus:border-purple-500 focus:ring-purple-500/20 max-sm:h-9 max-sm:w-9"
                 />
               ))}
             </div>

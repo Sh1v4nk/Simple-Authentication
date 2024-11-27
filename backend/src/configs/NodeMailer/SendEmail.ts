@@ -7,7 +7,7 @@ import {
 } from "@/utils";
 
 const companyName = "Auth";
-const sender = `"XYZ" <xyz@ethereal.email>"`;
+const sender = `"Authentication" <myemail.email>"`;
 
 export async function sendVerificationToken(
   username: string,
@@ -66,7 +66,7 @@ export async function resetPasswordEmail(
 ) {
   try {
     if (!email) {
-      throw new Error("Email is are required.");
+      throw new Error("Email is required.");
     }
 
     const response = await transporter.sendMail({

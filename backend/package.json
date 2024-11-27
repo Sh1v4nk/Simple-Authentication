@@ -3,9 +3,9 @@
   "module": "App.ts",
   "type": "module",
   "scripts": {
+    "build": "bun install && tsc",
     "start": "bun -r ./alias.js dist/App.js",
-    "dev": "bun --watch ./src/App.ts",
-    "build": "tsc"
+    "dev": "bun --watch ./src/App.ts"
   },
   "_moduleAliases": {
     "@": "dist/"
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/bun": "latest",
-    "@types/cookie-parser": "^1.4.7",
+    "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/nodemailer": "^6.4.16",

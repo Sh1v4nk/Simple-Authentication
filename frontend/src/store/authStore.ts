@@ -5,8 +5,9 @@ import { handleError } from "@/utils/handelErrors";
 
 const API_URL =
   import.meta.env.MODE === "development"
-    ? "http://localhost:3000/api/auth"
-    : "/api/auth";
+    ? "http://localhost:3000/api/auth" // Local URL in development
+    : import.meta.env.VITE_SERVER_URL || "/api/auth"; 
+
 
 axios.defaults.withCredentials = true;
 

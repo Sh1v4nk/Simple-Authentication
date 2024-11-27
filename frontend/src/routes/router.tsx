@@ -12,7 +12,7 @@ import {
   ForgotPasswordPage,
   ResetPasswordPage,
 } from "@/pages";
-import { ProtectedRoute, RedirectIfAuthenticated } from "./routeGuards";
+import { ProtectedRoute, RedirectIfAuthenticated } from "@/routes/routeGuards";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(

@@ -17,6 +17,7 @@ interface User {
   email: string;
   createdAt: Date;
   updatedAt: Date;
+  lastLogin: Date,
   isVerified: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface AuthState {
 
   signup: (email: string, password: string, username: string) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
+  signout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
   verifyEmail: (emailCode: string) => Promise<void>;

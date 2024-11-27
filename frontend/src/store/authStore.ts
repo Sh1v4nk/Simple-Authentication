@@ -6,8 +6,7 @@ import { handleError } from "@/utils/handelErrors";
 const API_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:3000/api/auth" // Local URL in development
-    : import.meta.env.VITE_SERVER_URL || "/api/auth"; 
-
+    : import.meta.env.VITE_SERVER_URL || "/api/auth";
 
 axios.defaults.withCredentials = true;
 
@@ -83,6 +82,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  signout: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await axios.post(`${API_URL}/signout`);
+      set({ user: null, isAuthenticated: false, error: null, isLoading: false });
+    } catch (error) {
+      handleError(error, set);
+    }
+  },
+
   verifyEmail: async (emailCode) => {
     set({ isLoading: true, error: null });
     try {
@@ -113,12 +122,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   resetPassword: async (token, password) => {
-    set({ isLoading: true, error: null, passwordError: null, });
+    set({ isLoading: true, error: null, passwordError: null });
     try {
       const response = await axios.post(`${API_URL}/reset-password/${token}`, {
         password,
       });
-      set({ isLoading: false, message: response.data.message, generalErrors: [], tokenError: [] });
+      set({
+        isLoading: false,
+        message: response.data.message,
+        generalErrors: [],
+        tokenError: [],
+      });
     } catch (error) {
       handleError(error, set);
     }

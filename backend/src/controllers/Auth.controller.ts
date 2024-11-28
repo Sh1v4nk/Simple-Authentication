@@ -163,13 +163,11 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = generateTokenAndSetCookie(res, user._id as ObjectId);
-
+    generateTokenAndSetCookie(res, user._id as ObjectId);
     user.lastLogin = new Date();
     await user.save();
 
     sendSuccessResponse(res, "SignIn successful", {
-      token,
       user: {
         ...user.toObject(),
         password: undefined,
@@ -185,7 +183,11 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
 
 export const signout = async (req: Request, res: Response): Promise<void> => {
   try {
-    res.clearCookie("authToken");
+    res.clearCookie("authToken", {
+      httpOnly: true,
+      sameSite: "none",
+      secure: process.env.NODE_ENV === "production",
+    });
     sendSuccessResponse(res, "Sign Out successful");
   } catch (error: unknown) {
     const message =
@@ -305,7 +307,7 @@ export const verifyAuth = async (
 
     sendSuccessResponse(res, "User found", {
       user: {
-        ...user.toObject({versionKey: false}),
+        ...user.toObject({ versionKey: false }),
         password: undefined,
       },
     });

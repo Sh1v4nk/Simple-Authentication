@@ -1,8 +1,7 @@
 import type { Request, Response } from "express";
 import type { ObjectId } from "mongoose";
-import bcrypt from "bcrypt";
-
 import User from "@/models/UserModel";
+
 import {
   signUpValidation,
   emailCodeValidation,
@@ -10,24 +9,30 @@ import {
   forgotPasswordValidation,
   resetPasswordValidation,
 } from "@/validations/authValidations";
+
 import {
-  sendSuccessResponse,
-  sendErrorResponse,
-  generateEmailVerificationToken,
+  HTTP_STATUS,
+  SUCCESS_MESSAGES,
+  ERROR_MESSAGES,
+  TIMING_CONSTANTS,
+} from "@/constants";
+
+import {
+  hashPassword,
+  comparePassword,
   generateTokenAndSetCookie,
+  generateEmailVerificationToken,
   generateResetPasswordToken,
-} from "@/utils";
+} from "@/utils/helpers";
+
+import { sendSuccessResponse, sendErrorResponse } from "@/utils";
+
 import {
   sendVerificationToken,
   successfulVerificationEmail,
   resetPasswordEmail,
   passwordResetSuccessfulEmail,
 } from "@/configs/NodeMailer/SendEmail";
-
-// constants variables
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
-const ONE_HOUR = 1 * 60 * 60 * 1000;
-const saltRounds: number = parseInt(process.env.SALT_ROUNDS || "10", 10);
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -55,7 +60,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await hashPassword(password);
     const emailVerificationToken = generateEmailVerificationToken();
 
     const newUser = new User({
@@ -63,7 +68,9 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       password: hashedPassword,
       username,
       emailVerificationToken,
-      emailVerificationTokenExpiresAt: new Date(Date.now() + FIFTEEN_MINUTES),
+      emailVerificationTokenExpiresAt: new Date(
+        Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES
+      ),
     });
 
     await newUser.save();
@@ -152,12 +159,12 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
     const dummyPassword = "dummyPasswordForComparison"; // This is just a placeholder
 
     if (!user) {
-      await bcrypt.compare(password, dummyPassword); // To avoid revealing whether the user exists
+      await comparePassword(password, dummyPassword); // To avoid revealing whether the user exists
       sendErrorResponse(res, "Invalid credentials");
       return;
     }
 
-    const matchPass = await bcrypt.compare(password, user.password);
+    const matchPass = await comparePassword(password, user.password);
     if (!matchPass) {
       sendErrorResponse(res, "Invalid credentials");
       return;
@@ -224,7 +231,9 @@ export const forgotPassword = async (
     }
 
     user.resetPasswordToken = generateResetPasswordToken();
-    user.resetPasswordTokenExpiresAt = new Date(Date.now() + ONE_HOUR);
+    user.resetPasswordTokenExpiresAt = new Date(
+      Date.now() + TIMING_CONSTANTS.ONE_HOUR
+    );
 
     await user.save();
 
@@ -272,7 +281,7 @@ export const resetPassword = async (
       return;
     }
     // updating password
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await hashPassword(password);
 
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;

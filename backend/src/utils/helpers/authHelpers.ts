@@ -1,15 +1,15 @@
-import type { Response } from "express";
-import type { ObjectId } from "mongoose";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
+import { Response } from "express";
+import { ObjectId } from "mongoose";
+import { TIMING_CONSTANTS } from "@/constants";
 
-export function generateEmailVerificationToken(): string {
-  return crypto.randomInt(100000, 1000000).toString();
-}
-
-export function generateResetPasswordToken(): string {
-  return crypto.randomBytes(20).toString("hex");
-}
+/**
+ * Generates a JWT token and sets it as a cookie in the response.
+ *
+ * @param res - The Express response object to set the cookie.
+ * @param userId - The user ID to be included in the token payload.
+ * @returns The generated JWT token.
+ */
 
 export const generateTokenAndSetCookie = (
   res: Response,
@@ -18,14 +18,15 @@ export const generateTokenAndSetCookie = (
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined in environment variables.");
   }
+
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
+    expiresIn: "7d", // Token expires in 7 days
   });
 
   res.cookie("authToken", token, {
     httpOnly: true,
     sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
     secure: process.env.NODE_ENV === "production",
   });
 

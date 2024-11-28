@@ -1,4 +1,3 @@
-export { generateEmailVerificationToken, generateResetPasswordToken ,generateTokenAndSetCookie } from "./tokenUtils";
 export { sendSuccessResponse, sendErrorResponse } from "./response";
 
 // Email Templates

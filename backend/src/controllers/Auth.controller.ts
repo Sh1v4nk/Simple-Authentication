@@ -39,9 +39,14 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     const result = signUpValidation.safeParse(req.body);
 
     if (!result.success) {
-      sendErrorResponse(res, "Incorrect Format", 400, {
-        errors: result.error.errors,
-      });
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.INCORRECT_FORMAT,
+        HTTP_STATUS.BAD_REQUEST,
+        {
+          errors: result.error.errors,
+        }
+      );
       return;
     }
 
@@ -53,9 +58,9 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 
     if (existingUser) {
       if (existingUser.email === email) {
-        sendErrorResponse(res, "Email already exists");
+        sendErrorResponse(res, ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
       } else if (existingUser.username === username) {
-        sendErrorResponse(res, "Username already exists");
+        sendErrorResponse(res, ERROR_MESSAGES.USERNAME_ALREADY_EXISTS);
       }
       return;
     }
@@ -81,7 +86,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       emailVerificationToken
     );
 
-    sendSuccessResponse(res, "User created successfully", {
+    sendSuccessResponse(res, SUCCESS_MESSAGES.USER_CREATED, {
       user: {
         ...newUser.toObject(),
         password: undefined,
@@ -89,8 +94,8 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error during signUp:", error);
   }
 };
@@ -103,9 +108,14 @@ export const verifyEmail = async (
     const result = emailCodeValidation.safeParse(req.body);
 
     if (!result.success) {
-      sendErrorResponse(res, "Invalid Verification Code", 400, {
-        errors: result.error.errors,
-      });
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.INVALID_VERIFICATION_CODE,
+        HTTP_STATUS.BAD_REQUEST,
+        {
+          errors: result.error.errors,
+        }
+      );
       return;
     }
     const { emailCode } = result.data;
@@ -116,7 +126,7 @@ export const verifyEmail = async (
     });
 
     if (!user) {
-      sendErrorResponse(res, "Invalid or expired verification code");
+      sendErrorResponse(res, ERROR_MESSAGES.EXPIRED_VERIFICATION_CODE);
       return;
     }
 
@@ -127,7 +137,7 @@ export const verifyEmail = async (
 
     await successfulVerificationEmail(user.username, user.email);
 
-    sendSuccessResponse(res, "Email verified successfully", {
+    sendSuccessResponse(res, SUCCESS_MESSAGES.EMAIL_VERIFIED, {
       user: {
         ...user.toObject(),
         password: undefined,
@@ -135,8 +145,8 @@ export const verifyEmail = async (
     });
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error during email verification:", error);
   }
 };
@@ -146,9 +156,14 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
     const result = signInValidation.safeParse(req.body);
 
     if (!result.success) {
-      sendErrorResponse(res, "Incorrect Format", 400, {
-        errors: result.error.errors,
-      });
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.INCORRECT_FORMAT,
+        HTTP_STATUS.BAD_REQUEST,
+        {
+          errors: result.error.errors,
+        }
+      );
       return;
     }
 
@@ -160,13 +175,13 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
 
     if (!user) {
       await comparePassword(password, dummyPassword); // To avoid revealing whether the user exists
-      sendErrorResponse(res, "Invalid credentials");
+      sendErrorResponse(res, ERROR_MESSAGES.INVALID_CREDENTIALS);
       return;
     }
 
     const matchPass = await comparePassword(password, user.password);
     if (!matchPass) {
-      sendErrorResponse(res, "Invalid credentials");
+      sendErrorResponse(res, ERROR_MESSAGES.INVALID_CREDENTIALS);
       return;
     }
 
@@ -174,7 +189,7 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
     user.lastLogin = new Date();
     await user.save();
 
-    sendSuccessResponse(res, "SignIn successful", {
+    sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_IN_SUCCESSFUL, {
       user: {
         ...user.toObject(),
         password: undefined,
@@ -182,8 +197,8 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error during signIn:", error);
   }
 };
@@ -195,11 +210,11 @@ export const signout = async (req: Request, res: Response): Promise<void> => {
       sameSite: "none",
       secure: process.env.NODE_ENV === "production",
     });
-    sendSuccessResponse(res, "Sign Out successful");
+    sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_OUT_SUCCESSFUL);
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error during sign out:", error);
   }
 };
@@ -212,9 +227,14 @@ export const forgotPassword = async (
     const result = forgotPasswordValidation.safeParse(req.body);
 
     if (!result.success) {
-      sendErrorResponse(res, "Incorrect Format", 400, {
-        errors: result.error.errors,
-      });
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.INCORRECT_FORMAT,
+        HTTP_STATUS.BAD_REQUEST,
+        {
+          errors: result.error.errors,
+        }
+      );
       return;
     }
 
@@ -223,10 +243,7 @@ export const forgotPassword = async (
     const user = await User.findOne({ email });
 
     if (!user) {
-      sendSuccessResponse(
-        res,
-        "If this email is registered, a reset link will be sent."
-      ); // It prevents revealing if user exists
+      sendSuccessResponse(res, SUCCESS_MESSAGES.PASSWORD_RESET_LINK_SENT); // It prevents revealing if user exists
       return;
     }
 
@@ -243,14 +260,11 @@ export const forgotPassword = async (
       `${process.env.CLIENT_URL}/reset-password/${user.resetPasswordToken}`
     );
 
-    sendSuccessResponse(
-      res,
-      "If this email is registered, a reset link will be sent."
-    );
+    sendSuccessResponse(res, SUCCESS_MESSAGES.PASSWORD_RESET_LINK_SENT);
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error while processing forgot password:", error);
   }
 };
@@ -265,9 +279,14 @@ export const resetPassword = async (
 
     const result = resetPasswordValidation.safeParse({ token, password });
     if (!result.success) {
-      sendErrorResponse(res, "Incorrect Format", 400, {
-        errors: result.error.errors,
-      });
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.INCORRECT_FORMAT,
+        HTTP_STATUS.BAD_REQUEST,
+        {
+          errors: result.error.errors,
+        }
+      );
       return;
     }
 
@@ -277,7 +296,7 @@ export const resetPassword = async (
     });
 
     if (!user) {
-      sendErrorResponse(res, "Invalid or expired reset token");
+      sendErrorResponse(res, ERROR_MESSAGES.EXPIRED_RESET_TOKEN);
       return;
     }
     // updating password
@@ -290,11 +309,11 @@ export const resetPassword = async (
 
     await passwordResetSuccessfulEmail(user.username, user.email);
 
-    sendSuccessResponse(res, "Password reset successful");
+    sendSuccessResponse(res, SUCCESS_MESSAGES.PASSWORD_RESET_SUCCESSFUL);
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error while processing reset password:", error);
   }
 };
@@ -304,17 +323,25 @@ export const verifyAuth = async (
   res: Response
 ): Promise<void> => {
   if (!req.userId) {
-    sendErrorResponse(res, "Unauthorized: User ID not provided", 401);
+    sendErrorResponse(
+      res,
+      ERROR_MESSAGES.UNAUTHORIZED_USER_ID,
+      HTTP_STATUS.UNAUTHORIZED
+    );
     return;
   }
   try {
     const user = await User.findById(req.userId);
     if (!user) {
-      sendErrorResponse(res, "User not found", 404);
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.USER_NOT_FOUND,
+        HTTP_STATUS.NOT_FOUND
+      );
       return;
     }
 
-    sendSuccessResponse(res, "User found", {
+    sendSuccessResponse(res, SUCCESS_MESSAGES.USER_FOUND, {
       user: {
         ...user.toObject({ versionKey: false }),
         password: undefined,
@@ -322,8 +349,8 @@ export const verifyAuth = async (
     });
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    sendErrorResponse(res, message, 500);
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error in verifyAuth:", error);
   }
 };

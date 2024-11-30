@@ -3,14 +3,6 @@ import type { ObjectId } from "mongoose";
 import User from "@/models/UserModel";
 
 import {
-  signUpValidation,
-  emailCodeValidation,
-  signInValidation,
-  forgotPasswordValidation,
-  resetPasswordValidation,
-} from "@/validations/authValidations";
-
-import {
   HTTP_STATUS,
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
@@ -36,34 +28,7 @@ import {
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = signUpValidation.safeParse(req.body);
-
-    if (!result.success) {
-      sendErrorResponse(
-        res,
-        ERROR_MESSAGES.INCORRECT_FORMAT,
-        HTTP_STATUS.BAD_REQUEST,
-        {
-          errors: result.error.errors,
-        }
-      );
-      return;
-    }
-
-    const { username, email, password } = result.data;
-
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    });
-
-    if (existingUser) {
-      if (existingUser.email === email) {
-        sendErrorResponse(res, ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
-      } else if (existingUser.username === username) {
-        sendErrorResponse(res, ERROR_MESSAGES.USERNAME_ALREADY_EXISTS);
-      }
-      return;
-    }
+    const { username, email, password } = req.body;
 
     const hashedPassword = await hashPassword(password);
     const emailVerificationToken = generateEmailVerificationToken();
@@ -105,20 +70,7 @@ export const verifyEmail = async (
   res: Response
 ): Promise<void> => {
   try {
-    const result = emailCodeValidation.safeParse(req.body);
-
-    if (!result.success) {
-      sendErrorResponse(
-        res,
-        ERROR_MESSAGES.INVALID_VERIFICATION_CODE,
-        HTTP_STATUS.BAD_REQUEST,
-        {
-          errors: result.error.errors,
-        }
-      );
-      return;
-    }
-    const { emailCode } = result.data;
+    const { emailCode } = req.body;
 
     const user = await User.findOne({
       emailVerificationToken: emailCode,
@@ -153,21 +105,8 @@ export const verifyEmail = async (
 
 export const signin = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = signInValidation.safeParse(req.body);
-
-    if (!result.success) {
-      sendErrorResponse(
-        res,
-        ERROR_MESSAGES.INCORRECT_FORMAT,
-        HTTP_STATUS.BAD_REQUEST,
-        {
-          errors: result.error.errors,
-        }
-      );
-      return;
-    }
-
-    const { email, password } = result.data;
+    console.log("entered in sigin")
+    const { email, password } = req.body;
 
     const user = await User.findOne({ email });
 
@@ -224,21 +163,7 @@ export const forgotPassword = async (
   res: Response
 ): Promise<void> => {
   try {
-    const result = forgotPasswordValidation.safeParse(req.body);
-
-    if (!result.success) {
-      sendErrorResponse(
-        res,
-        ERROR_MESSAGES.INCORRECT_FORMAT,
-        HTTP_STATUS.BAD_REQUEST,
-        {
-          errors: result.error.errors,
-        }
-      );
-      return;
-    }
-
-    const { email } = result.data;
+    const { email } = req.body;
 
     const user = await User.findOne({ email });
 
@@ -274,21 +199,7 @@ export const resetPassword = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { token } = req.params;
-    const { password } = req.body;
-
-    const result = resetPasswordValidation.safeParse({ token, password });
-    if (!result.success) {
-      sendErrorResponse(
-        res,
-        ERROR_MESSAGES.INCORRECT_FORMAT,
-        HTTP_STATUS.BAD_REQUEST,
-        {
-          errors: result.error.errors,
-        }
-      );
-      return;
-    }
+    const { token, password } = req.body;
 
     const user = await User.findOne({
       resetPasswordToken: token,

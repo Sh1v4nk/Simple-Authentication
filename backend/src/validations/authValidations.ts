@@ -19,7 +19,7 @@ const passwordValidation = z
     message: "Password must contain at least one special character",
   });
 
-export const signUpValidation = z.object({
+export const signUpValidationSchema = z.object({
   email: emailValidation,
   password: passwordValidation,
   username: z
@@ -28,22 +28,22 @@ export const signUpValidation = z.object({
     .max(20, { message: "Username must be at most 20 characters" }),
 });
 
-export const signInValidation = z.object({
+export const signInValidationSchema = z.object({
   email: emailValidation,
   password: passwordValidation,
 });
 
-export const emailCodeValidation = z.object({
+export const emailCodeValidationSchema = z.object({
   emailCode: z.string().length(6, {
     message: "Verification code must be exactly 6 characters long",
   }),
 });
 
-export const forgotPasswordValidation = z.object({
+export const forgotPasswordValidationSchema = z.object({
   email: emailValidation,
 });
 
-export const resetPasswordValidation = z.object({
+export const resetPasswordValidationSchema = z.object({
   token: z
     .string()
     .length(40, { message: "Token must be exactly 40 characters long" }),

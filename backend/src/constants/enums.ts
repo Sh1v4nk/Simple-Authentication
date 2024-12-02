@@ -48,3 +48,17 @@ export const ERROR_MESSAGES = {
   UNKNOWN_ERROR: "An unknown error occurred",
   UNEXPECTED_ERROR: "An unexpected error occurred",
 };
+
+export const VALIDATION_MESSAGES = {
+  EMAIL_INVALID: "Invalid email address",
+  PASSWORD_MIN: "Password must be at least 8 characters long",
+  PASSWORD_MAX: "Password must be at most 40 characters long",
+  PASSWORD_UPPERCASE: "Password must contain at least one uppercase letter",
+  PASSWORD_LOWERCASE: "Password must contain at least one lowercase letter",
+  PASSWORD_NUMBER: "Password must contain at least one number",
+  PASSWORD_SPECIAL_CHAR: "Password must contain at least one special character",
+  USERNAME_REQUIRED: "Username is required",
+  USERNAME_MAX: "Username must be at most 20 characters",
+  EMAIL_CODE_LENGTH: "Verification code must be exactly 6 characters long",
+  RESET_TOKEN_LENGTH: "Token must be exactly 40 characters long",
+};

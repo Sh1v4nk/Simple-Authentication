@@ -1,51 +1,58 @@
 import { z } from "zod";
+import { VALIDATION_MESSAGES } from "@/constants/enums";
 
-const emailValidation = z.string().email({ message: "Invalid email address" });
-
-const passwordValidation = z
+export const emailSchema = z
   .string()
-  .min(8, { message: "Password must be at least 8 characters long" })
-  .max(40, { message: "Password must be at most 40 characters long" })
+  .email({ message: VALIDATION_MESSAGES.EMAIL_INVALID });
+
+export const passwordSchema = z
+  .string()
+  .min(8, { message: VALIDATION_MESSAGES.PASSWORD_MIN })
+  .max(40, { message: VALIDATION_MESSAGES.PASSWORD_MAX })
   .refine((password) => /[A-Z]/.test(password), {
-    message: "Password must contain at least one uppercase letter",
+    message: VALIDATION_MESSAGES.PASSWORD_UPPERCASE,
   })
   .refine((password) => /[a-z]/.test(password), {
-    message: "Password must contain at least one lowercase letter",
+    message: VALIDATION_MESSAGES.PASSWORD_LOWERCASE,
   })
   .refine((password) => /[0-9]/.test(password), {
-    message: "Password must contain at least one number",
+    message: VALIDATION_MESSAGES.PASSWORD_NUMBER,
   })
   .refine((password) => /[^A-Za-z0-9]/.test(password), {
-    message: "Password must contain at least one special character",
+    message: VALIDATION_MESSAGES.PASSWORD_SPECIAL_CHAR,
   });
 
+export const usernameSchema = z
+  .string()
+  .min(1, { message: VALIDATION_MESSAGES.USERNAME_REQUIRED })
+  .max(20, { message: VALIDATION_MESSAGES.USERNAME_MAX });
+
+export const tokenSchema = z
+  .string()
+  .length(40, { message: VALIDATION_MESSAGES.RESET_TOKEN_LENGTH });
+
 export const signUpValidationSchema = z.object({
-  email: emailValidation,
-  password: passwordValidation,
-  username: z
-    .string()
-    .min(1, { message: "Username is required" })
-    .max(20, { message: "Username must be at most 20 characters" }),
+  email: emailSchema,
+  password: passwordSchema,
+  username: usernameSchema,
 });
 
 export const signInValidationSchema = z.object({
-  email: emailValidation,
-  password: passwordValidation,
+  email: emailSchema,
+  password: passwordSchema,
 });
 
 export const emailCodeValidationSchema = z.object({
   emailCode: z.string().length(6, {
-    message: "Verification code must be exactly 6 characters long",
+    message: VALIDATION_MESSAGES.EMAIL_CODE_LENGTH,
   }),
 });
 
 export const forgotPasswordValidationSchema = z.object({
-  email: emailValidation,
+  email: emailSchema,
 });
 
 export const resetPasswordValidationSchema = z.object({
-  token: z
-    .string()
-    .length(40, { message: "Token must be exactly 40 characters long" }),
-  password: passwordValidation,
+  token: tokenSchema,
+  password: passwordSchema,
 });

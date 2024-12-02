@@ -105,7 +105,6 @@ export const verifyEmail = async (
 
 export const signin = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log("entered in sigin")
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });

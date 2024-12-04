@@ -1,15 +1,34 @@
-# auth-backend
+# Simple-Authentication Backend
 
-To install dependencies:
+This is the backend service for the Simple-Auth project, built with Bun, Express.js, and TypeScript.
 
-```bash
-bun install
-```
+## Setup Instructions
 
-To run:
+### Prerequisites
 
-```bash
-bun run index.ts
-```
+- Bun.js
+- MongoDB
 
-This project was created using `bun init` in bun v1.1.32. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+### Installation
+
+1. Install dependencies:
+   ```bash
+   bun install
+   ```
+2. Set up environment variables:
+
+- Refer to the `.env.example` file for the required environment variables.
+
+- Create a `.env` file:
+    ```bash
+    cp .env.example .env
+    ```
+- Fill in the values in the `.env` file.
+
+
+3. Run the server:
+    ```bash
+    bun dev
+    ```
+
+The backend runs on http://localhost:3000 by default.

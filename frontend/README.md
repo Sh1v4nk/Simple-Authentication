@@ -7,7 +7,7 @@ This is the frontend of the Simple-Auth project, built with React.js and Tailwin
 ### Prerequisites
 
 - Node.js
-- npm or yarn
+- npm or yarn or bun
 
 ### Installation
 

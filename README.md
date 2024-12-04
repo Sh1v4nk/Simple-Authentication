@@ -10,7 +10,7 @@ A simple authentication system built with the MERN (MongoDB, Express.js, React, 
 - **SignOut**: Clear user sessions by removing cookies.
 - **Password Hashing**: Uses bcrypt for secure password storage.
 - **Validation**: Zod is used for validating user input.
-- **Frontend & Backend Separation**: Monorepo structure with shared TypeScript types between frontend and backend.
+- **Frontend & Backend Separation**: Monorepo structure with separate frontend and backend directories.
 
 ---
 
@@ -40,8 +40,7 @@ Follow these steps to get the project up and running on your local machine:
 
 - Node.js
 - MongoDB
-- Yarn or npm
-- Bun.js (if using the backend as per your setup)
+- Bun.js
 
 ---
 

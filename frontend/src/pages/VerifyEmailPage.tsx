@@ -89,7 +89,7 @@ function EmailVerifyPage() {
           },
         },
       });
-      navigate("/");
+      navigate("/signin");
     } catch (error) {
       console.error("Email Verification error:", error);
     }

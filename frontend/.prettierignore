@@ -1,16 +1,30 @@
-node_modules
- *.js
- *.d.ts
- *.md
- *.json
- *.lock
- *.yml
- *.yaml
-.vite/
+node_modules/
 
-# Ignore build and output directories
+.vite/
 dist/
 build/
 
 .env
-.env.*.local
+.env.*
+.env.example
+
+.gitignore
+
+*.lock
+bun.lockb
+
+.prettierrc
+.prettierignore
+
+*.md
+*.json
+*.yml
+*.yaml
+
+*.html
+
+tailwind.config.*
+postcss.config.*
+
+*.log
+logs/

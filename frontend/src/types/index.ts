@@ -17,7 +17,7 @@ interface User {
   email: string;
   createdAt: Date;
   updatedAt: Date;
-  lastLogin: Date,
+  lastLogin: Date;
   isVerified: boolean;
 }
 

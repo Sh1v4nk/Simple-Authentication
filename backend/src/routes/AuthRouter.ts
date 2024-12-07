@@ -11,6 +11,7 @@ import {
 } from "@/controllers/Auth.controller";
 
 import {
+  checkExistingUser,
   verifyAuthToken,
   validateSignUp,
   validateSignIn,
@@ -23,7 +24,7 @@ const router = express.Router();
 
 router.get("/verify-auth", verifyAuthToken, verifyAuth);
 
-router.post("/signup", validateSignUp, signup);
+router.post("/signup", validateSignUp, checkExistingUser, signup);
 router.post("/signin", validateSignIn, signin);
 router.post("/signout", signout);
 

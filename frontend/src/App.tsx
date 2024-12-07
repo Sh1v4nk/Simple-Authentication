@@ -6,7 +6,7 @@ import { router } from "@/routes/router";
 import FloatingShape from "@/components/FloatingShape";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuthStore } from "@/store/authStore";
-import { floatingShapeConfig } from "@/utils/floadingShapeConfig";
+import { floatingShapeConfig } from "@/utils/floatingShapeConfig";
 
 function App() {
   const { verifyAuth, isCheckingAuth } = useAuthStore();

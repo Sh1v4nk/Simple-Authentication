@@ -77,6 +77,8 @@ Refer to the `.env.example` file in the `/backend` directory for the required en
 
 Bun will automatically load these environment variables during runtime.
 
+---
+
 ### Project Structure
 
 The project is structured as a monorepo with the following directories:
@@ -111,3 +113,31 @@ Simple-Authentication/
 │   │   └── App.tsx
 │   │   └── main.tsx
 ```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/LICENSE) file for details.
+
+
+---
+
+Thank you for visiting my Simple-Authentication repository. If you have any suggestions or feedback, feel free to reach out to me.
+
+Connect with me:
+
+<div align="center">
+  <a href="mailto:shivankpandey113@gmail.com" target="_blank">
+    <img src="https://img.shields.io/static/v1?message=Gmail&logo=gmail&label=&color=D14836&logoColor=white&labelColor=&style=for-the-badge" height="30" alt="gmail logo"  />
+  </a>
+  <a href="https://twitter.com/sh1v4nk" target="_blank">
+    <img src="https://img.shields.io/static/v1?message=Twitter&logo=twitter&label=&color=1DA1F2&logoColor=white&labelColor=&style=for-the-badge" height="30" alt="twitter logo"  />
+  </a>
+    <a href="https://www.linkedin.com/in/sh1v4nk/" target="_blank">
+    <img src="https://img.shields.io/static/v1?message=LinkedIn&logo=linkedin&label=&color=0077B5&logoColor=white&labelColor=&style=for-the-badge" height="30" alt="linkedin logo"  />
+  </a>
+  <a href="https://discord.com/users/571299781096505344" target="_blank">
+    <img src="https://img.shields.io/static/v1?message=Discord&logo=discord&label=&color=7289DA&logoColor=white&labelColor=&style=for-the-badge" height="30" alt="discord logo"  />
+  </a>
+</div>

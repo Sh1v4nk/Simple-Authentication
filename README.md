@@ -113,6 +113,17 @@ Simple-Authentication/
 │   │   └── App.tsx
 │   │   └── main.tsx
 ```
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/FeatureName`)
+3. Commit your Changes (`git commit -m 'Add some FeatureName'`)
+4. Push to the Branch (`git push origin feature/FeatureName`)
+5. Open a Pull Request
 
 ---
 

@@ -2,6 +2,25 @@
 
 A simple authentication system built with the MERN (MongoDB, Express.js, React, Node.js) stack. This project implements essential authentication features like user registration, signin, signout, and JWT-based authentication with cookies for session management.
 
+## Table of Contents
+
+- [Introduction](#simple-authentication)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+    - [Clone the repository](#1-clone-the-repository)
+    - [Install dependencies](#2-install-dependencies)
+      - [Backend](#backend-1)
+      - [Frontend](#frontend-1)
+    - [Set up environment variables](#3-set-up-environment-variables)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Features
 
 - **User Registration**: Signup with email and username validations to avoid duplicates.

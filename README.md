@@ -134,6 +134,22 @@ Simple-Authentication/
 ```
 ---
 
+## Screenshots
+
+### Sign Up Page
+
+![Sign Up Page](https://i.ibb.co/2PHhRYg/signup.png)
+
+### Sign In Page
+
+![Sign In Page](https://i.ibb.co/H2n5hQC/signin.png)
+
+### Forgot Password Page
+
+![Forgot Password Page](https://i.ibb.co/7jRDt2w/forgot-password.png)
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please follow these steps:

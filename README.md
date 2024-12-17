@@ -18,6 +18,7 @@ A simple authentication system built with the MERN (MongoDB, Express.js, React, 
       - [Frontend](#frontend-1)
     - [Set up environment variables](#3-set-up-environment-variables)
 - [Project Structure](#project-structure)
+- [Screenshots](#Screenshots)
 - [Contributing](#contributing)
 - [License](#license)
 

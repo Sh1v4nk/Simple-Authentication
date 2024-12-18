@@ -17,6 +17,7 @@ export const SUCCESS_MESSAGES = {
     "If this email is registered, a reset link will be sent",
   PASSWORD_RESET_SUCCESSFUL: "Password reset successful",
   USER_FOUND: "User found",
+  OTP_RESENT: "OTP has been resent successfully",
 };
 
 export const ERROR_MESSAGES = {

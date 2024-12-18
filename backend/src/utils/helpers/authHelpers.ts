@@ -13,14 +13,15 @@ import { TIMING_CONSTANTS } from "@/constants";
 
 export const generateTokenAndSetCookie = (
   res: Response,
-  userId: ObjectId
+  userId: ObjectId,
+  tokenExpiryTime: string = "7d" // Default Token expires is 7 days
 ): string => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined in environment variables.");
   }
 
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d", // Token expires in 7 days
+    expiresIn: tokenExpiryTime,
   });
 
   res.cookie("authToken", token, {

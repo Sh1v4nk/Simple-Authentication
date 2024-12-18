@@ -42,6 +42,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
         Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES
       ),
     });
+    generateTokenAndSetCookie(res, newUser._id as ObjectId, "15m");
 
     await newUser.save();
 
@@ -262,5 +263,41 @@ export const verifyAuth = async (
       error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
     sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     console.error("Error in verifyAuth:", error);
+  }
+};
+
+export const resendOTP = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      sendErrorResponse(
+        res,
+        ERROR_MESSAGES.USER_NOT_FOUND,
+        HTTP_STATUS.NOT_FOUND
+      );
+      return;
+    }
+
+    const emailVerificationToken = generateEmailVerificationToken();
+    user.emailVerificationToken = emailVerificationToken;
+    user.emailVerificationTokenExpiresAt = new Date(
+      Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES
+    );
+
+    await user.save();
+
+    await sendVerificationToken(
+      user.username,
+      user.email,
+      emailVerificationToken
+    );
+
+    sendSuccessResponse(res, SUCCESS_MESSAGES.OTP_RESENT);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
+    sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    console.error("Error during OTP resend:", error);
   }
 };

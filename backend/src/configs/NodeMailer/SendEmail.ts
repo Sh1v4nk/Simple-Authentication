@@ -7,7 +7,7 @@ import {
 } from "@/utils";
 
 const companyName = "Auth";
-const sender = `"Authentication" <myemail.email>"`;
+const sender = `"Authentication" <myemail@example.com>"`;
 
 export async function sendVerificationToken(
   username: string,

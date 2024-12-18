@@ -8,6 +8,7 @@ import {
   forgotPassword,
   resetPassword,
   verifyAuth,
+  resendOTP
 } from "@/controllers/Auth.controller";
 
 import {
@@ -29,6 +30,7 @@ router.post("/signin", validateSignIn, signin);
 router.post("/signout", signout);
 
 router.post("/verify-email", validateEmailCode, verifyEmail);
+router.post("/resend-otp", verifyAuthToken, resendOTP);
 router.post("/forgot-password", validateForgotPassword, forgotPassword);
 router.post("/reset-password/:token", validateResetPassword, resetPassword);
 

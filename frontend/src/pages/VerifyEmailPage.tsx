@@ -17,18 +17,32 @@ import { useAuthStore } from "@/store/authStore";
 
 function EmailVerifyPage() {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
+  const [isResendDisabled, setIsResendDisabled] = useState(false);
+  const [resendCountDown, setResendCountDown] = useState(30); // 30 seconds emailCountDown
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const { verifyEmail, isLoading, generalErrors } = useAuthStore();
+  const { verifyEmail, resendOTP, isLoading, generalErrors } = useAuthStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (isResendDisabled && resendCountDown > 0) {
+      const countdown = setInterval(() => {
+        setResendCountDown((prev) => prev - 1);
+      }, 1000);
+
+      return () => clearInterval(countdown);
+    }
+
+    if (resendCountDown === 0) {
+      setIsResendDisabled(false);
+    }
+  }, [isResendDisabled, resendCountDown]);
+
   const handleChange = (index: number, value: string) => {
-    // Allow only digits and limit to a single character per input
     if (/^\d?$/.test(value)) {
       const newCode = [...code];
       newCode[index] = value;
       setCode(newCode);
 
-      // Move to the next input if value is entered
       if (value !== "" && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
@@ -52,7 +66,6 @@ function EmailVerifyPage() {
     }
   };
 
-  // Handle pasting of the OTP code
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
 
@@ -100,7 +113,25 @@ function EmailVerifyPage() {
     submitOTP();
   };
 
-  // Auto submit when all OTP fields are filled
+  const handleResendOtp = async () => {
+    if (isResendDisabled) return;
+    try {
+      await resendOTP();
+      toast.success("OTP has been resent successfully", {
+        cancel: {
+          label: "Close",
+          onClick: () => {
+            toast.dismiss();
+          },
+        },
+      });
+      setIsResendDisabled(true);
+      setResendCountDown(30);
+    } catch (error) {
+      console.error("Error in resending OTP:", error);
+    }
+  };
+
   useEffect(() => {
     if (code.every((digit) => digit !== "")) {
       submitOTP();
@@ -162,6 +193,21 @@ function EmailVerifyPage() {
                 "Verify Email"
               )}
             </Button>
+            <div className="mt-4 text-center">
+              {isResendDisabled ? (
+                <p className="text-zinc-400">
+                  Resend OTP available in{" "}
+                  <span className="font-semibold">{resendCountDown}s</span>
+                </p>
+              ) : (
+                <p
+                  onClick={handleResendOtp}
+                  className="cursor-pointer text-purple-500 underline hover:text-purple-600"
+                >
+                  Resend OTP
+                </p>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>

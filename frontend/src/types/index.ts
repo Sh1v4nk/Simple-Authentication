@@ -41,6 +41,7 @@ export interface AuthState {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
   verifyEmail: (emailCode: string) => Promise<void>;
+  resendOTP: () => Promise<void>;
   verifyAuth: () => Promise<void>;
 }
 

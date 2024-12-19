@@ -111,6 +111,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  resendOTP: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axios.post(`${API_URL}/resend-otp`);
+      set({
+        isLoading: false,
+        message: response.data.message,
+        generalErrors: [],
+      });
+    } catch (error) {
+      handleError(error, set);
+    }
+  },
+
   forgotPassword: async (email) => {
     set({ isLoading: true, error: null, emailError: null, message: null });
     try {

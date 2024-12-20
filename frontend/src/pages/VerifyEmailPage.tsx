@@ -18,24 +18,10 @@ import { useAuthStore } from "@/store/authStore";
 function EmailVerifyPage() {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
-  const [resendCountDown, setResendCountDown] = useState(30); // 30 seconds emailCountDown
+  const [resendCountDown, setResendCountDown] = useState(30);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { verifyEmail, resendOTP, isLoading, generalErrors } = useAuthStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isResendDisabled && resendCountDown > 0) {
-      const countdown = setInterval(() => {
-        setResendCountDown((prev) => prev - 1);
-      }, 1000);
-
-      return () => clearInterval(countdown);
-    }
-
-    if (resendCountDown === 0) {
-      setIsResendDisabled(false);
-    }
-  }, [isResendDisabled, resendCountDown]);
 
   const handleChange = (index: number, value: string) => {
     if (/^\d?$/.test(value)) {
@@ -118,15 +104,22 @@ function EmailVerifyPage() {
     try {
       await resendOTP();
       toast.success("OTP has been resent successfully", {
-        cancel: {
-          label: "Close",
-          onClick: () => {
-            toast.dismiss();
-          },
-        },
+        cancel: { label: "Close", onClick: () => toast.dismiss() },
       });
+
       setIsResendDisabled(true);
       setResendCountDown(30);
+
+      const countdown = setInterval(() => {
+        setResendCountDown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdown);
+            setIsResendDisabled(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (error) {
       console.error("Error in resending OTP:", error);
     }
@@ -193,7 +186,7 @@ function EmailVerifyPage() {
                 "Verify Email"
               )}
             </Button>
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center text-sm">
               {isResendDisabled ? (
                 <p className="text-zinc-400">
                   Resend OTP available in{" "}
@@ -202,7 +195,7 @@ function EmailVerifyPage() {
               ) : (
                 <p
                   onClick={handleResendOtp}
-                  className="cursor-pointer text-purple-500 underline hover:text-purple-600"
+                  className="cursor-pointer text-purple-400 transition-colors hover:text-purple-300"
                 >
                   Resend OTP
                 </p>

@@ -1,6 +1,14 @@
+<div align="center">
+
 # Simple-Authentication
 
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+![GitHub repo size](https://img.shields.io/github/repo-size/Sh1v4nk/Simple-Authentication)
+
 A simple authentication system built with the MERN (MongoDB, Express.js, React, Node.js) stack. This project implements essential authentication features like user registration, signin, signout, and JWT-based authentication with cookies for session management.
+
+</div>
 
 ## Table of Contents
 
@@ -37,6 +45,7 @@ A simple authentication system built with the MERN (MongoDB, Express.js, React, 
 ## Tech Stack
 
 ### Backend:
+
 - **Language**: TypeScript
 - **Framework**: Express.js
 - **Database**: MongoDB
@@ -47,9 +56,11 @@ A simple authentication system built with the MERN (MongoDB, Express.js, React, 
   - Nodemailer for email functionality (e.g., account activation/reset password).
 
 ### Frontend:
+
 - React.js
 - Tailwind CSS
 - Zustand
+
 ---
 
 ## Getting Started
@@ -73,7 +84,9 @@ git clone https://github.com/Sh1v4nk/Simple-Authentication
 
 cd Simple-Authentication
 ```
+
 #### 2. Install dependencies:
+
 Navigate to the respective directories and install the required dependencies:
 
 ##### Backend:
@@ -85,6 +98,7 @@ bun install
 ```
 
 ##### Frontend:
+
 ```bash
 cd ../frontend
 
@@ -119,7 +133,7 @@ Simple-Authentication/
 │   │   └── App.ts
 │   ├── .env.example
 │   ├── alias.js
-│   
+│
 ├── frontend/
 │   ├── src/
 │   │   ├── assets/
@@ -133,6 +147,7 @@ Simple-Authentication/
 │   │   └── App.tsx
 │   │   └── main.tsx
 ```
+
 ---
 
 ## Screenshots
@@ -166,7 +181,6 @@ Contributions are welcome! Please follow these steps:
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/LICENSE) file for details.
-
 
 ---
 

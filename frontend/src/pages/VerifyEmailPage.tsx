@@ -18,7 +18,7 @@ import { useAuthStore } from "@/store/authStore";
 function EmailVerifyPage() {
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
-  const [resendCountDown, setResendCountDown] = useState(30);
+  const [resendCountDown, setResendCountDown] = useState(60);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { verifyEmail, resendOTP, isLoading, generalErrors } = useAuthStore();
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ function EmailVerifyPage() {
       });
 
       setIsResendDisabled(true);
-      setResendCountDown(30);
+      setResendCountDown(60);
 
       const countdown = setInterval(() => {
         setResendCountDown((prev) => {

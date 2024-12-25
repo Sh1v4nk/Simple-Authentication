@@ -108,9 +108,15 @@ bun install
 
 #### 3. Set up environment variables:
 
-Refer to the `.env.example` file in the `/backend` directory for the required environment variables. Copy the file and rename it to `.env` in the `/backend` folder, then populate the values as needed.
+Refer to the `.env.example` file in the `/backend` or `/fronted` directory for the required environment variables. Copy the file and rename it to `.env` in the respecitve folder, then populate the values as needed.
 
 Bun will automatically load these environment variables during runtime.
+
+##### References:
+
+- [Backend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/backend/.env.example)
+
+- [Frontend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/frontend/.env.example)
 
 ---
 

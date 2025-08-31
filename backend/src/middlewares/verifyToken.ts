@@ -48,9 +48,9 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         if (accessToken) {
             try {
                 // Decode without verification to get userId (handle expired tokens)
-                const parts = accessToken.split('.');
+                const parts = accessToken.split(".");
                 if (parts.length === 3) {
-                    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                     userId = payload.userId;
                 }
             } catch {
@@ -67,11 +67,11 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
                         $elemMatch: {
                             token: refreshId,
                             isRevoked: false,
-                            expiresAt: { $gt: new Date() }
-                        }
-                    }
+                            expiresAt: { $gt: new Date() },
+                        },
+                    },
                 });
-                
+
                 if (user) {
                     userId = (user._id as ObjectId).toString();
                 }
@@ -88,12 +88,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         }
 
         // Attempt to refresh the access token
-        const refreshResult = await TokenService.refreshAccessToken(
-            userId as any, 
-            refreshId, 
-            req.get("User-Agent"),
-            req.ip
-        );
+        const refreshResult = await TokenService.refreshAccessToken(userId as any, refreshId, req.get("User-Agent"), req.ip);
 
         if (!refreshResult) {
             // Refresh failed - clear cookies and require login

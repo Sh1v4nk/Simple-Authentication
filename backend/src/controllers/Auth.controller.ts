@@ -382,9 +382,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         if (accessToken) {
             try {
                 // Decode without verification to get userId (handle expired tokens)
-                const parts = accessToken.split('.');
+                const parts = accessToken.split(".");
                 if (parts.length === 3) {
-                    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                     userId = payload.userId;
                 }
             } catch {
@@ -400,11 +400,11 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
                         $elemMatch: {
                             token: refreshId,
                             isRevoked: false,
-                            expiresAt: { $gt: new Date() }
-                        }
-                    }
+                            expiresAt: { $gt: new Date() },
+                        },
+                    },
                 });
-                
+
                 if (user) {
                     userId = (user._id as ObjectId).toString();
                 }
@@ -420,12 +420,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         }
 
         // Try to refresh access token using refresh token
-        const result = await TokenService.refreshAccessToken(
-            userId as any, 
-            refreshId, 
-            userAgent, 
-            clientIP
-        );
+        const result = await TokenService.refreshAccessToken(userId as any, refreshId, userAgent, clientIP);
 
         if (!result) {
             TokenService.clearTokenCookies(res);
@@ -437,7 +432,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         TokenService.setAccessTokenCookie(res, result.newAccessToken);
 
         sendSuccessResponse(res, "Access token refreshed successfully", {
-            message: "Token refreshed successfully"
+            message: "Token refreshed successfully",
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;

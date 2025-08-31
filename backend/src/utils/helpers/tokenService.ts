@@ -34,11 +34,9 @@ export class TokenService {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }
 
-        return jwt.sign(
-            { userId: userId.toString(), type: "access" }, 
-            process.env.JWT_SECRET as string, 
-            { expiresIn: this.ACCESS_TOKEN_EXPIRY }
-        );
+        return jwt.sign({ userId: userId.toString(), type: "access" }, process.env.JWT_SECRET as string, {
+            expiresIn: this.ACCESS_TOKEN_EXPIRY,
+        });
     }
 
     /**
@@ -151,11 +149,7 @@ export class TokenService {
      * Refresh access token using stored refresh token
      * This checks database for valid refresh token and generates new access token
      */
-    static async refreshAccessToken(
-        userId: ObjectId,
-        userAgent?: string,
-        ipAddress?: string
-    ): Promise<{ newAccessToken: string } | null> {
+    static async refreshAccessToken(userId: ObjectId, userAgent?: string, ipAddress?: string): Promise<{ newAccessToken: string } | null> {
         try {
             // Find user with valid refresh tokens
             const user = await User.findOne({
@@ -170,7 +164,7 @@ export class TokenService {
 
             // Find the most recent valid refresh token
             const validToken = user.refreshTokens
-                .filter(rt => !rt.isRevoked && rt.expiresAt > new Date())
+                .filter((rt) => !rt.isRevoked && rt.expiresAt > new Date())
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 
             if (!validToken) {
@@ -194,10 +188,7 @@ export class TokenService {
      */
     static async revokeRefreshToken(userId: ObjectId): Promise<boolean> {
         try {
-            const result = await User.updateOne(
-                { _id: userId }, 
-                { $set: { "refreshTokens.$[].isRevoked": true } }
-            );
+            const result = await User.updateOne({ _id: userId }, { $set: { "refreshTokens.$[].isRevoked": true } });
 
             return result.modifiedCount > 0;
         } catch (error) {
@@ -211,10 +202,7 @@ export class TokenService {
      */
     static async revokeAllRefreshTokens(userId: ObjectId): Promise<boolean> {
         try {
-            const result = await User.updateOne(
-                { _id: userId }, 
-                { $set: { "refreshTokens.$[].isRevoked": true } }
-            );
+            const result = await User.updateOne({ _id: userId }, { $set: { "refreshTokens.$[].isRevoked": true } });
 
             return result.modifiedCount > 0;
         } catch (error) {

@@ -177,7 +177,7 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Successful login - clear failure flag and update user info  
+        // Successful login - clear failure flag and update user info
         res.locals.authenticationFailed = false;
         await UserQueryOptimizer.updateLoginInfo((user._id as ObjectId).toString(), clientIP, userAgent);
         const { accessToken } = await TokenService.generateTokensAndSetCookies(res, user._id as ObjectId, userAgent, clientIP);
@@ -205,7 +205,7 @@ export const signout = async (req: Request, res: Response): Promise<void> => {
         if (req.userId) {
             await TokenService.revokeRefreshToken(req.userId as unknown as ObjectId);
         }
-        
+
         TokenService.clearTokenCookies(res);
 
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_OUT_SUCCESSFUL);

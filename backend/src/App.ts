@@ -17,19 +17,25 @@ const corsOptions = {
     origin: function (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
         const isDev = process.env.NODE_ENV !== "production";
 
+        console.log(`🌐 CORS request from origin: ${origin || 'no-origin'}`);
+
         // ✅ Allow requests without origin in production (health checks, internal requests)
         // but still validate origin when present for security
         if (!origin) {
+            console.log(`✅ CORS allowed: no origin (internal request)`);
             return callback(null, true);
         }
 
         if (isDev && origin.startsWith("http://localhost:")) {
+            console.log(`✅ CORS allowed: localhost development`);
             return callback(null, true);
         }
 
         const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+        console.log(`🔍 Checking against allowed origins:`, allowedOrigins);
 
         if (allowedOrigins.includes(origin)) {
+            console.log(`✅ CORS allowed: origin in whitelist`);
             return callback(null, true);
         }
 

@@ -108,14 +108,13 @@ export class TokenService {
 
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? "none" : "lax", // "none" for cross-domain in production, "lax" for localhost
+            secure: true, // Always true for HTTPS (required for sameSite: none)
+            sameSite: "none", // Required for cross-domain cookies
             maxAge: 60 * 60 * 1000, // 1 hour
             path: "/",
-            domain: isProduction ? undefined : undefined, // Let browser handle domain
         });
 
-        console.log(`🍪 Access token cookie set - Production: ${isProduction}, Secure: ${isProduction}`);
+        console.log(`🍪 Access token cookie set - Production: ${isProduction}, Secure: true, SameSite: none`);
     }
 
     /**
@@ -126,14 +125,13 @@ export class TokenService {
 
         res.cookie("refreshId", hashedToken, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? "none" : "lax", // "none" for cross-domain in production, "lax" for localhost
+            secure: true, // Always true for HTTPS (required for sameSite: none)
+            sameSite: "none", // Required for cross-domain cookies
             maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
             path: "/",
-            domain: isProduction ? undefined : undefined, // Let browser handle domain
         });
 
-        console.log(`🔑 Refresh identifier cookie set - Production: ${isProduction}`);
+        console.log(`🔑 Refresh identifier cookie set - Production: ${isProduction}, Secure: true, SameSite: none`);
     }
 
     /**
@@ -142,12 +140,16 @@ export class TokenService {
     static extractAccessToken(req: any): string | null {
         // Primary: accessToken cookie
         let token = req.cookies?.accessToken;
+        
+        console.log(`🔍 Extracting access token - cookies:`, Object.keys(req.cookies || {}));
+        console.log(`🔍 AccessToken from cookie:`, token ? `${token.substring(0, 20)}...` : 'null');
 
         // Fallback: Authorization header
         if (!token) {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith("Bearer ")) {
                 token = authHeader.substring(7);
+                console.log(`🔍 AccessToken from header:`, token ? `${token.substring(0, 20)}...` : 'null');
             }
         }
 
@@ -291,10 +293,9 @@ export class TokenService {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? ("none" as const) : ("lax" as const),
+            secure: true, // Always true for HTTPS
+            sameSite: "none" as const, // Required for cross-domain cookies
             path: "/",
-            domain: isProduction ? undefined : undefined,
         };
 
         res.clearCookie("accessToken", cookieOptions);

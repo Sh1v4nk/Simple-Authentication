@@ -20,24 +20,32 @@ declare global {
  */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+        console.log(`🔐 Auth middleware triggered for: ${req.method} ${req.path}`);
+        console.log(`🔐 Cookies received:`, Object.keys(req.cookies || {}));
+        
         // Extract access token
         const accessToken = TokenService.extractAccessToken(req);
+        console.log(`🔐 Access token extracted:`, accessToken ? 'Found' : 'Not found');
 
         if (accessToken) {
             // Verify access token
             const payload = TokenService.verifyAccessToken(accessToken);
+            console.log(`🔐 Access token verification:`, payload ? 'Valid' : 'Invalid/Expired');
 
             if (payload) {
                 // Valid access token
                 req.userId = payload.userId.toString();
+                console.log(`✅ Valid access token for user: ${req.userId}`);
                 return next();
             }
         }
 
         // Access token invalid/expired - try refresh
         const refreshId = req.cookies?.refreshId;
+        console.log(`🔄 Refresh attempt - refreshId:`, refreshId ? 'Found' : 'Not found');
 
         if (!refreshId) {
+            console.log(`❌ No refresh token available - requiring login`);
             sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
             return;
         }

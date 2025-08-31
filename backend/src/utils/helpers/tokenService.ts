@@ -6,8 +6,8 @@ import User from "@/models/UserModel";
 import { TIMING_CONSTANTS } from "@/constants";
 
 interface TokenPayload {
-    userId: ObjectId;
-    type: "access" | "refresh";
+    userId: string;
+    type: "access";
 }
 
 interface RefreshTokenData {
@@ -18,29 +18,38 @@ interface RefreshTokenData {
 
 /**
  * Secure Token Service - Proper dual-token implementation
- * - Access Token: Short-lived (15min), sent to frontend
+ * - Access Token: Medium-lived (1 hour), sent as HTTP-only cookie
  * - Refresh Token: Long-lived (7 days), stored ONLY in database
+ * - Frontend gets access token automatically via cookie
+ * - Refresh token NEVER sent to frontend
  */
 export class TokenService {
-    private static readonly ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
+    private static readonly ACCESS_TOKEN_EXPIRY = "1h"; // 1 hour (reasonable balance)
     private static readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
     private static readonly REFRESH_TOKEN_LENGTH = 64; // bytes
 
     /**
-     * Generate access token (JWT)
+     * Generate access token (JWT) - sent to frontend
      */
     static generateAccessToken(userId: ObjectId): string {
         if (!process.env.JWT_SECRET) {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }
 
-        return jwt.sign({ userId: userId.toString(), type: "access" }, process.env.JWT_SECRET as string, {
-            expiresIn: this.ACCESS_TOKEN_EXPIRY,
-        });
+        return jwt.sign(
+            {
+                userId: userId.toString(),
+                type: "access",
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: this.ACCESS_TOKEN_EXPIRY,
+            }
+        );
     }
 
     /**
-     * Generate refresh token (random string, NOT JWT)
+     * Generate refresh token (random string) - stored server-side only
      */
     static generateRefreshToken(): RefreshTokenData {
         const token = crypto.randomBytes(this.REFRESH_TOKEN_LENGTH).toString("hex");
@@ -55,8 +64,9 @@ export class TokenService {
     }
 
     /**
-     * Generate both tokens and store refresh token in DB
-     * ONLY sends access token to frontend
+     * Generate both tokens and set cookies
+     * - Access token: HTTP-only cookie for frontend
+     * - Refresh token: Stored in database only (never sent)
      */
     static async generateTokensAndSetCookies(
         res: Response,
@@ -67,30 +77,31 @@ export class TokenService {
         const accessToken = this.generateAccessToken(userId);
         const refreshTokenData = this.generateRefreshToken();
 
-        // Store refresh token in database ONLY (never send to frontend)
+        // Store refresh token in database (hashed)
         await User.findByIdAndUpdate(userId, {
             $push: {
                 refreshTokens: {
                     token: refreshTokenData.hashedToken,
                     createdAt: new Date(),
                     expiresAt: refreshTokenData.expiresAt,
-                    userAgent,
-                    ipAddress,
+                    userAgent: userAgent || "unknown",
+                    ipAddress: ipAddress || "unknown",
                     isRevoked: false,
                 },
             },
         });
 
-        // ONLY set access token cookie (refresh token stays server-side)
+        // Set access token cookie (frontend will receive this)
         this.setAccessTokenCookie(res, accessToken);
 
-        return {
-            accessToken, // Only return access token
-        };
+        // Also set a session identifier for refresh token lookup
+        this.setRefreshTokenIdentifier(res, refreshTokenData.hashedToken);
+
+        return { accessToken };
     }
 
     /**
-     * Set ONLY access token cookie (secure settings)
+     * Set access token cookie - this is what frontend receives
      */
     static setAccessTokenCookie(res: Response, accessToken: string): void {
         const isProduction = process.env.NODE_ENV === "production";
@@ -98,22 +109,35 @@ export class TokenService {
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? "strict" : "lax",
-            maxAge: 15 * 60 * 1000, // 15 minutes
+            sameSite: "none",
+            maxAge: 60 * 60 * 1000, // 1 hour
             path: "/",
         });
+    }
 
-        console.log(`🍪 Access token cookie set - Production: ${isProduction}`);
+    /**
+     * Set refresh token identifier cookie (for lookup only)
+     */
+    static setRefreshTokenIdentifier(res: Response, hashedToken: string): void {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.cookie("refreshId", hashedToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "none",
+            maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
+            path: "/",
+        });
     }
 
     /**
      * Extract access token from request
      */
     static extractAccessToken(req: any): string | null {
-        // Try accessToken cookie first
+        // Primary: accessToken cookie
         let token = req.cookies?.accessToken;
 
-        // Fallback to Authorization header
+        // Fallback: Authorization header
         if (!token) {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -133,13 +157,16 @@ export class TokenService {
                 throw new Error("JWT_SECRET is not defined in environment variables.");
             }
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET) as TokenPayload;
+            const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
 
             if (decoded.type !== "access") {
                 return null;
             }
 
-            return decoded;
+            return {
+                userId: decoded.userId,
+                type: "access",
+            };
         } catch (error) {
             return null;
         }
@@ -147,25 +174,32 @@ export class TokenService {
 
     /**
      * Refresh access token using stored refresh token
-     * This checks database for valid refresh token and generates new access token
      */
-    static async refreshAccessToken(userId: ObjectId, userAgent?: string, ipAddress?: string): Promise<{ newAccessToken: string } | null> {
+    static async refreshAccessToken(
+        userId: ObjectId,
+        refreshId: string,
+        userAgent?: string,
+        ipAddress?: string
+    ): Promise<{ newAccessToken: string } | null> {
         try {
-            // Find user with valid refresh tokens
+            // Find user with valid refresh token matching the identifier
             const user = await User.findOne({
                 _id: userId,
-                "refreshTokens.isRevoked": false,
-                "refreshTokens.expiresAt": { $gt: new Date() },
+                refreshTokens: {
+                    $elemMatch: {
+                        token: refreshId,
+                        isRevoked: false,
+                        expiresAt: { $gt: new Date() },
+                    },
+                },
             });
 
-            if (!user || !user.refreshTokens.length) {
+            if (!user) {
                 return null;
             }
 
-            // Find the most recent valid refresh token
-            const validToken = user.refreshTokens
-                .filter((rt) => !rt.isRevoked && rt.expiresAt > new Date())
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+            // Find the specific refresh token
+            const validToken = user.refreshTokens.find((rt) => rt.token === refreshId && !rt.isRevoked && rt.expiresAt > new Date());
 
             if (!validToken) {
                 return null;
@@ -174,9 +208,20 @@ export class TokenService {
             // Generate new access token
             const newAccessToken = this.generateAccessToken(userId);
 
-            return {
-                newAccessToken,
-            };
+            // Optional: Update last used timestamp
+            await User.updateOne(
+                {
+                    _id: userId,
+                    "refreshTokens.token": refreshId,
+                },
+                {
+                    $set: {
+                        "refreshTokens.$.lastUsedAt": new Date(),
+                    },
+                }
+            );
+
+            return { newAccessToken };
         } catch (error) {
             console.error("Access token refresh error:", error);
             return null;
@@ -184,11 +229,39 @@ export class TokenService {
     }
 
     /**
-     * Revoke refresh token (logout)
+     * Revoke specific refresh token (logout current device)
      */
-    static async revokeRefreshToken(userId: ObjectId): Promise<boolean> {
+    static async revokeRefreshToken(userId: ObjectId, refreshId?: string): Promise<boolean> {
         try {
-            const result = await User.updateOne({ _id: userId }, { $set: { "refreshTokens.$[].isRevoked": true } });
+            let updateQuery;
+
+            if (refreshId) {
+                // Revoke specific token
+                updateQuery = {
+                    $set: {
+                        "refreshTokens.$[elem].isRevoked": true,
+                        "refreshTokens.$[elem].revokedAt": new Date(),
+                    },
+                };
+            } else {
+                // Revoke all tokens
+                updateQuery = {
+                    $set: {
+                        "refreshTokens.$[].isRevoked": true,
+                        "refreshTokens.$[].revokedAt": new Date(),
+                    },
+                };
+            }
+
+            const result = await User.updateOne(
+                { _id: userId },
+                updateQuery,
+                refreshId
+                    ? {
+                          arrayFilters: [{ "elem.token": refreshId }],
+                      }
+                    : {}
+            );
 
             return result.modifiedCount > 0;
         } catch (error) {
@@ -201,27 +274,50 @@ export class TokenService {
      * Revoke all refresh tokens for a user (logout from all devices)
      */
     static async revokeAllRefreshTokens(userId: ObjectId): Promise<boolean> {
-        try {
-            const result = await User.updateOne({ _id: userId }, { $set: { "refreshTokens.$[].isRevoked": true } });
-
-            return result.modifiedCount > 0;
-        } catch (error) {
-            console.error("All tokens revocation error:", error);
-            return false;
-        }
+        return this.revokeRefreshToken(userId);
     }
 
     /**
-     * Clear access token cookie
+     * Clear all auth cookies
      */
     static clearTokenCookies(res: Response): void {
-        res.clearCookie("accessToken", {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        const cookieOptions = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            secure: isProduction,
+            sameSite: "none" as const,
             path: "/",
-        });
-        console.log("🗑️ Access token cookie cleared");
+        };
+
+        res.clearCookie("accessToken", cookieOptions);
+        res.clearCookie("refreshId", cookieOptions);
+
+        console.log("🗑️ All auth cookies cleared");
+    }
+
+    /**
+     * Check if user has valid session (for middleware)
+     */
+    static async hasValidSession(userId: ObjectId, refreshId?: string): Promise<boolean> {
+        try {
+            if (!refreshId) return false;
+
+            const user = await User.findOne({
+                _id: userId,
+                refreshTokens: {
+                    $elemMatch: {
+                        token: refreshId,
+                        isRevoked: false,
+                        expiresAt: { $gt: new Date() },
+                    },
+                },
+            });
+
+            return !!user;
+        } catch (error) {
+            return false;
+        }
     }
 
     /**
@@ -229,6 +325,8 @@ export class TokenService {
      */
     static async cleanupExpiredTokens(): Promise<void> {
         try {
+            const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+
             await User.updateMany(
                 {},
                 {
@@ -236,12 +334,16 @@ export class TokenService {
                         refreshTokens: {
                             $or: [
                                 { expiresAt: { $lt: new Date() } },
-                                { isRevoked: true, createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+                                {
+                                    isRevoked: true,
+                                    revokedAt: { $lt: cutoffDate },
+                                },
                             ],
                         },
                     },
                 }
             );
+
             console.log("🧹 Expired tokens cleaned up");
         } catch (error) {
             console.error("Token cleanup error:", error);

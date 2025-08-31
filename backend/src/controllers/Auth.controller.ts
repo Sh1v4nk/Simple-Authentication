@@ -203,7 +203,8 @@ export const signout = async (req: Request, res: Response): Promise<void> => {
     try {
         // Revoke refresh tokens and clear access token cookie
         if (req.userId) {
-            await TokenService.revokeRefreshToken(req.userId as unknown as ObjectId);
+            const refreshId = req.cookies?.refreshId;
+            await TokenService.revokeRefreshToken(req.userId as unknown as ObjectId, refreshId);
         }
 
         TokenService.clearTokenCookies(res);

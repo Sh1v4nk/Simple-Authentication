@@ -98,7 +98,7 @@ export class TokenService {
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? "strict" : "lax",
+            sameSite: "none",
             maxAge: 15 * 60 * 1000, // 15 minutes
             path: "/",
         });
@@ -218,7 +218,7 @@ export class TokenService {
         res.clearCookie("accessToken", {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            sameSite: "none",
             path: "/",
         });
         console.log("🗑️ Access token cookie cleared");

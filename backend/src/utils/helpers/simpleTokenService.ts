@@ -26,7 +26,7 @@ export const generateTokenAndSetCookie = (
 
     res.cookie("authToken", token, {
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none"
         maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
         secure: process.env.NODE_ENV === "production",
         path: "/",
@@ -78,7 +78,7 @@ export const clearAuthCookie = (res: Response): void => {
     res.clearCookie("authToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: "none",
         path: "/",
     });
 };

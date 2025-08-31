@@ -1,37 +1,44 @@
 {
-  "name": "auth-backend",
-  "module": "App.ts",
-  "type": "module",
-  "scripts": {
-    "build": "bun install && tsc",
-    "start": "bun -r ./alias.js dist/App.js",
-    "dev": "bun --watch ./src/App.ts"
-  },
-  "_moduleAliases": {
-    "@": "dist/"
-  },
-  "dependencies": {
-    "bcrypt": "^5.1.1",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "crypto": "^1.0.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2",
-    "module-alias": "^2.2.3",
-    "mongoose": "^8.7.2",
-    "nodemailer": "^6.9.15",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/bcrypt": "^5.0.2",
-    "@types/bun": "latest",
-    "@types/cookie-parser": "^1.4.8",
-    "@types/express": "^5.0.0",
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/nodemailer": "^6.4.16",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
-  }
+    "name": "auth-backend",
+    "module": "App.ts",
+    "type": "module",
+    "version": "2.0.0",
+    "scripts": {
+        "build": "bun install && tsc",
+        "start": "bun -r ./alias.js dist/App.js",
+        "dev": "bun --watch ./src/App.ts",
+        "clean": "rm -rf dist"
+    },
+    "_moduleAliases": {
+        "@": "dist/"
+    },
+    "dependencies": {
+        "bcrypt": "^5.1.1",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "crypto": "^1.0.1",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.1",
+        "express-rate-limit": "^8.0.1",
+        "express-slow-down": "^3.0.0",
+        "helmet": "^8.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "module-alias": "^2.2.3",
+        "mongoose": "^8.7.2",
+        "mongoose-aggregate-paginate-v2": "^1.1.4",
+        "nodemailer": "^6.9.15",
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^5.0.2",
+        "@types/bun": "latest",
+        "@types/cookie-parser": "^1.4.8",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/express-rate-limit": "^6.0.2",
+        "@types/jsonwebtoken": "^9.0.7",
+        "@types/nodemailer": "^6.4.16",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.6.3"
+    }
 }

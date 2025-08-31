@@ -1,5 +1,3 @@
-export { hashPassword } from "./hashPassword";
-export { comparePassword } from "./comparePasswordHash";
-export { generateTokenAndSetCookie } from "./authHelpers";
+export { hashPassword, comparePassword, generateResetPasswordToken } from "./passwordUtils";
 export { generateEmailVerificationToken } from "./generateOtp";
-export { generateResetPasswordToken } from "./resetPasswordToken";
+export { TokenService } from "./tokenService";

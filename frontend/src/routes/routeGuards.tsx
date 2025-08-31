@@ -3,25 +3,25 @@ import { RouteGuardProps } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 
 export const ProtectedRoute = ({ children }: RouteGuardProps) => {
-  const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />;
-  }
+    if (!isAuthenticated) {
+        return <Navigate to="/signin" replace />;
+    }
 
-  if (user && !user.isVerified) {
-    return <Navigate to="/verify-email" replace />;
-  }
+    if (user && !user.isVerified) {
+        return <Navigate to="/verify-email" replace />;
+    }
 
-  return children;
+    return children;
 };
 
 export const RedirectIfAuthenticated = ({ children }: RouteGuardProps) => {
-  const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
 
-  if (isAuthenticated && user?.isVerified) {
-    return <Navigate to="/" replace />;
-  }
+    if (isAuthenticated && user?.isVerified) {
+        return <Navigate to="/" replace />;
+    }
 
-  return children;
+    return children;
 };

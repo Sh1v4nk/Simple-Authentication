@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Toaster } from "sonner";
 import { RouterProvider } from "react-router-dom";
 
@@ -9,30 +9,39 @@ import { useAuthStore } from "@/store/authStore";
 import { floatingShapeConfig } from "@/utils/floatingShapeConfig";
 
 function App() {
-  const { verifyAuth, isCheckingAuth } = useAuthStore();
+    const { verifyAuth, isCheckingAuth } = useAuthStore();
+    const hasVerified = useRef(false);
 
-  useEffect(() => {
-    verifyAuth();
-  }, [verifyAuth]);
+    useEffect(() => {
+        // Only verify auth once on app mount
+        if (!hasVerified.current) {
+            hasVerified.current = true;
+            verifyAuth();
+        }
+    }, [verifyAuth]);
 
-  return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
-      <Toaster theme="dark" />
+    return (
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
+            <Toaster theme="dark" />
 
-      {floatingShapeConfig.map((shape, index) => (
-        <FloatingShape
-          key={index}
-          color={shape.color}
-          size={shape.size}
-          top={shape.top}
-          left={shape.left}
-          delay={shape.delay}
-        />
-      ))}
+            {floatingShapeConfig.map((shape, index) => (
+                <FloatingShape
+                    key={index}
+                    color={shape.color}
+                    size={shape.size}
+                    top={shape.top}
+                    left={shape.left}
+                    delay={shape.delay}
+                />
+            ))}
 
-      {isCheckingAuth ? <LoadingSpinner /> : <RouterProvider router={router} />}
-    </div>
-  );
+            {isCheckingAuth ? (
+                <LoadingSpinner />
+            ) : (
+                <RouterProvider router={router} />
+            )}
+        </div>
+    );
 }
 
 export default App;

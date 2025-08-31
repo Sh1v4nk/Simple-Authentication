@@ -94,7 +94,7 @@ export class TokenService {
         // Set access token cookie (frontend will receive this)
         this.setAccessTokenCookie(res, accessToken);
 
-        // Also set a session identifier for refresh token lookup
+        // Set a session identifier for refresh token lookup (but not the actual refresh token)
         this.setRefreshTokenIdentifier(res, refreshTokenData.hashedToken);
 
         return { accessToken };
@@ -109,10 +109,13 @@ export class TokenService {
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: "none",
+            sameSite: isProduction ? "none" : "lax", // "none" for cross-domain in production, "lax" for localhost
             maxAge: 60 * 60 * 1000, // 1 hour
             path: "/",
+            domain: isProduction ? undefined : undefined, // Let browser handle domain
         });
+
+        console.log(`🍪 Access token cookie set - Production: ${isProduction}, Secure: ${isProduction}`);
     }
 
     /**
@@ -124,10 +127,13 @@ export class TokenService {
         res.cookie("refreshId", hashedToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: "none",
+            sameSite: isProduction ? "none" : "lax", // "none" for cross-domain in production, "lax" for localhost
             maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
             path: "/",
+            domain: isProduction ? undefined : undefined, // Let browser handle domain
         });
+
+        console.log(`🔑 Refresh identifier cookie set - Production: ${isProduction}`);
     }
 
     /**
@@ -286,8 +292,9 @@ export class TokenService {
         const cookieOptions = {
             httpOnly: true,
             secure: isProduction,
-            sameSite: "none" as const,
+            sameSite: isProduction ? ("none" as const) : ("lax" as const),
             path: "/",
+            domain: isProduction ? undefined : undefined,
         };
 
         res.clearCookie("accessToken", cookieOptions);

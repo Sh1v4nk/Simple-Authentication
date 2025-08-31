@@ -42,20 +42,45 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
             return;
         }
 
-        // Try to extract userId from expired access token (if available)
+        // Try to extract userId from expired access token (if available) - more robust approach
         let userId: string | null = null;
 
         if (accessToken) {
             try {
-                // Decode without verification to get userId
-                const decoded = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64").toString());
-                userId = decoded.userId;
+                // Decode without verification to get userId (handle expired tokens)
+                const parts = accessToken.split('.');
+                if (parts.length === 3) {
+                    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                    userId = payload.userId;
+                }
             } catch {
-                // Ignore decode errors
+                // Ignore decode errors - continue with refresh attempt
             }
         }
 
-        // If no userId from token, we can't refresh - need to login
+        // If we have refreshId but no userId from token, try to find user by refreshId
+        if (!userId) {
+            try {
+                const User = (await import("@/models/UserModel")).default;
+                const user = await User.findOne({
+                    refreshTokens: {
+                        $elemMatch: {
+                            token: refreshId,
+                            isRevoked: false,
+                            expiresAt: { $gt: new Date() }
+                        }
+                    }
+                });
+                
+                if (user) {
+                    userId = (user._id as ObjectId).toString();
+                }
+            } catch (error) {
+                console.error("Error finding user by refresh token:", error);
+            }
+        }
+
+        // If still no userId, clear cookies and require login
         if (!userId) {
             TokenService.clearTokenCookies(res);
             sendErrorResponse(res, "Session expired. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
@@ -63,7 +88,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         }
 
         // Attempt to refresh the access token
-        const refreshResult = await TokenService.refreshAccessToken(userId as any, refreshId, req.get("User-Agent"));
+        const refreshResult = await TokenService.refreshAccessToken(
+            userId as any, 
+            refreshId, 
+            req.get("User-Agent"),
+            req.ip
+        );
 
         if (!refreshResult) {
             // Refresh failed - clear cookies and require login

@@ -367,19 +367,69 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     try {
         const { clientIP, userAgent } = getClientInfo(req);
 
-        // Check if user is authenticated (has valid refresh token in DB)
-        if (!req.userId) {
-            sendErrorResponse(res, "User not authenticated", HTTP_STATUS.UNAUTHORIZED);
+        // Get refresh token identifier from cookie
+        const refreshId = req.cookies?.refreshId;
+
+        if (!refreshId) {
+            sendErrorResponse(res, "No refresh token found. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
-        const userId = req.userId as unknown as ObjectId;
+        // Try to extract userId from expired access token (if available)
+        let userId: string | null = null;
+        const accessToken = TokenService.extractAccessToken(req);
 
-        // Try to refresh access token using database refresh token
-        const result = await TokenService.refreshAccessToken(userId, userAgent, clientIP);
+        if (accessToken) {
+            try {
+                // Decode without verification to get userId (handle expired tokens)
+                const parts = accessToken.split('.');
+                if (parts.length === 3) {
+                    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                    userId = payload.userId;
+                }
+            } catch {
+                // Ignore decode errors
+            }
+        }
+
+        // If no userId from token, try to find user by refreshId
+        if (!userId) {
+            try {
+                const user = await User.findOne({
+                    refreshTokens: {
+                        $elemMatch: {
+                            token: refreshId,
+                            isRevoked: false,
+                            expiresAt: { $gt: new Date() }
+                        }
+                    }
+                });
+                
+                if (user) {
+                    userId = (user._id as ObjectId).toString();
+                }
+            } catch (error) {
+                console.error("Error finding user by refresh token:", error);
+            }
+        }
+
+        if (!userId) {
+            TokenService.clearTokenCookies(res);
+            sendErrorResponse(res, "Invalid refresh token. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
+            return;
+        }
+
+        // Try to refresh access token using refresh token
+        const result = await TokenService.refreshAccessToken(
+            userId as any, 
+            refreshId, 
+            userAgent, 
+            clientIP
+        );
 
         if (!result) {
-            sendErrorResponse(res, "No valid refresh token found. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
+            TokenService.clearTokenCookies(res);
+            sendErrorResponse(res, "Refresh token expired. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
@@ -387,7 +437,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         TokenService.setAccessTokenCookie(res, result.newAccessToken);
 
         sendSuccessResponse(res, "Access token refreshed successfully", {
-            accessToken: result.newAccessToken,
+            message: "Token refreshed successfully"
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;

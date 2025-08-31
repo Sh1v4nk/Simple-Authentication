@@ -26,7 +26,7 @@ export const generateTokenAndSetCookie = (
 
     res.cookie("authToken", token, {
         httpOnly: true,
-        sameSite: "none"
+        sameSite: "none",
         maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
         secure: process.env.NODE_ENV === "production",
         path: "/",

@@ -17,9 +17,10 @@ const corsOptions = {
     origin: function (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
         const isDev = process.env.NODE_ENV !== "production";
 
-        // 🚫 Block requests without origin in production (Postman, curl, direct API calls)
+        // ✅ Allow requests without origin in production (health checks, internal requests)
+        // but still validate origin when present for security
         if (!origin) {
-            return isDev ? callback(null, true) : callback(new Error("Requests without origin are not allowed"));
+            return callback(null, true);
         }
 
         if (isDev && origin.startsWith("http://localhost:")) {
@@ -32,6 +33,7 @@ const corsOptions = {
             return callback(null, true);
         }
 
+        console.log(`🚫 CORS blocked origin: ${origin}`);
         return callback(new Error("Not allowed by CORS"));
     },
     credentials: true, // allow cookies/authorization headers

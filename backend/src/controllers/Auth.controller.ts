@@ -69,8 +69,8 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
             emailVerificationTokenExpiresAt: new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES),
         });
 
-        // Generate authentication tokens
-        await TokenService.generateTokensAndSetCookies(res, newUser._id as ObjectId, userAgent, clientIP);
+        // Generate secure tokens (refresh token stored in DB only)
+        const { accessToken } = await TokenService.generateTokensAndSetCookies(res, newUser._id as ObjectId, userAgent, clientIP);
 
         // Save user to database
         await newUser.save();
@@ -177,10 +177,10 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Successful login - clear failure flag and update user info
+        // Successful login - clear failure flag and update user info  
         res.locals.authenticationFailed = false;
         await UserQueryOptimizer.updateLoginInfo((user._id as ObjectId).toString(), clientIP, userAgent);
-        await TokenService.generateTokensAndSetCookies(res, user._id as ObjectId, userAgent, clientIP);
+        const { accessToken } = await TokenService.generateTokensAndSetCookies(res, user._id as ObjectId, userAgent, clientIP);
 
         // Send success response
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_IN_SUCCESSFUL, {
@@ -201,14 +201,11 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
  */
 export const signout = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Extract and revoke refresh token
-        const refreshToken = TokenService.extractRefreshToken(req);
-
-        if (refreshToken) {
-            await TokenService.revokeRefreshToken(refreshToken);
+        // Revoke refresh tokens and clear access token cookie
+        if (req.userId) {
+            await TokenService.revokeRefreshToken(req.userId as unknown as ObjectId);
         }
-
-        // Clear authentication cookies
+        
         TokenService.clearTokenCookies(res);
 
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_OUT_SUCCESSFUL);
@@ -369,26 +366,26 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     try {
         const { clientIP, userAgent } = getClientInfo(req);
 
-        // Extract refresh token from request
-        const refreshToken = TokenService.extractRefreshToken(req);
-
-        if (!refreshToken) {
-            sendErrorResponse(res, "Refresh token not provided", HTTP_STATUS.UNAUTHORIZED);
+        // Check if user is authenticated (has valid refresh token in DB)
+        if (!req.userId) {
+            sendErrorResponse(res, "User not authenticated", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
-        // Verify and consume refresh token
-        const result = await TokenService.verifyAndConsumeRefreshToken(refreshToken, userAgent, clientIP);
+        const userId = req.userId as unknown as ObjectId;
+
+        // Try to refresh access token using database refresh token
+        const result = await TokenService.refreshAccessToken(userId, userAgent, clientIP);
 
         if (!result) {
-            sendErrorResponse(res, "Invalid or expired refresh token", HTTP_STATUS.UNAUTHORIZED);
+            sendErrorResponse(res, "No valid refresh token found. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
-        // Set new tokens in cookies
-        TokenService.setTokenCookies(res, result.newAccessToken, result.newRefreshToken);
+        // Set new access token cookie
+        TokenService.setAccessTokenCookie(res, result.newAccessToken);
 
-        sendSuccessResponse(res, "Tokens refreshed successfully", {
+        sendSuccessResponse(res, "Access token refreshed successfully", {
             accessToken: result.newAccessToken,
         });
     } catch (error: unknown) {
@@ -405,26 +402,11 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
  */
 export const revokeAllTokens = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Check if user is authenticated
-        if (!req.userId) {
-            sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
-            return;
-        }
-
-        const userId = req.userId as unknown as ObjectId;
-
-        // Revoke all refresh tokens for the user
-        const success = await TokenService.revokeAllRefreshTokens(userId);
-
-        if (!success) {
-            sendErrorResponse(res, "Failed to revoke tokens", HTTP_STATUS.INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        // Clear cookies for current session
+        // Clear current auth cookie and revoke all refresh tokens
+        await TokenService.revokeAllRefreshTokens(req.userId as unknown as ObjectId);
         TokenService.clearTokenCookies(res);
 
-        sendSuccessResponse(res, "All tokens revoked successfully");
+        sendSuccessResponse(res, "Signed out from all devices successfully.");
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
         sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);

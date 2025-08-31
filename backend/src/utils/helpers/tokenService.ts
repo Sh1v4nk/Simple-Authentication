@@ -17,7 +17,9 @@ interface RefreshTokenData {
 }
 
 /**
- * Token Service - Handles both access and refresh tokens
+ * Secure Token Service - Proper dual-token implementation
+ * - Access Token: Short-lived (15min), sent to frontend
+ * - Refresh Token: Long-lived (7 days), stored ONLY in database
  */
 export class TokenService {
     private static readonly ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
@@ -25,18 +27,22 @@ export class TokenService {
     private static readonly REFRESH_TOKEN_LENGTH = 64; // bytes
 
     /**
-     * Generate access token
+     * Generate access token (JWT)
      */
     static generateAccessToken(userId: ObjectId): string {
         if (!process.env.JWT_SECRET) {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }
 
-        return jwt.sign({ userId, type: "access" } as TokenPayload, process.env.JWT_SECRET, { expiresIn: this.ACCESS_TOKEN_EXPIRY });
+        return jwt.sign(
+            { userId: userId.toString(), type: "access" }, 
+            process.env.JWT_SECRET as string, 
+            { expiresIn: this.ACCESS_TOKEN_EXPIRY }
+        );
     }
 
     /**
-     * Generate refresh token
+     * Generate refresh token (random string, NOT JWT)
      */
     static generateRefreshToken(): RefreshTokenData {
         const token = crypto.randomBytes(this.REFRESH_TOKEN_LENGTH).toString("hex");
@@ -51,18 +57,19 @@ export class TokenService {
     }
 
     /**
-     * Generate both tokens and set cookies
+     * Generate both tokens and store refresh token in DB
+     * ONLY sends access token to frontend
      */
     static async generateTokensAndSetCookies(
         res: Response,
         userId: ObjectId,
         userAgent?: string,
         ipAddress?: string
-    ): Promise<{ accessToken: string; refreshToken: string }> {
+    ): Promise<{ accessToken: string }> {
         const accessToken = this.generateAccessToken(userId);
         const refreshTokenData = this.generateRefreshToken();
 
-        // Store refresh token in database
+        // Store refresh token in database ONLY (never send to frontend)
         await User.findByIdAndUpdate(userId, {
             $push: {
                 refreshTokens: {
@@ -76,22 +83,20 @@ export class TokenService {
             },
         });
 
-        // Set cookies
-        this.setTokenCookies(res, accessToken, refreshTokenData.token);
+        // ONLY set access token cookie (refresh token stays server-side)
+        this.setAccessTokenCookie(res, accessToken);
 
         return {
-            accessToken,
-            refreshToken: refreshTokenData.token,
+            accessToken, // Only return access token
         };
     }
 
     /**
-     * Set token cookies with appropriate security settings
+     * Set ONLY access token cookie (secure settings)
      */
-    static setTokenCookies(res: Response, accessToken: string, refreshToken: string): void {
+    static setAccessTokenCookie(res: Response, accessToken: string): void {
         const isProduction = process.env.NODE_ENV === "production";
 
-        // Access token cookie (shorter expiry)
         res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: isProduction,
@@ -100,14 +105,25 @@ export class TokenService {
             path: "/",
         });
 
-        // Refresh token cookie (longer expiry)
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? "strict" : "lax",
-            maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
-            path: "/", // Allow refresh token to be sent to all auth endpoints
-        });
+        console.log(`🍪 Access token cookie set - Production: ${isProduction}`);
+    }
+
+    /**
+     * Extract access token from request
+     */
+    static extractAccessToken(req: any): string | null {
+        // Try accessToken cookie first
+        let token = req.cookies?.accessToken;
+
+        // Fallback to Authorization header
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+        }
+
+        return token || null;
     }
 
     /**
@@ -132,75 +148,43 @@ export class TokenService {
     }
 
     /**
-     * Verify and use refresh token
+     * Refresh access token using stored refresh token
+     * This checks database for valid refresh token and generates new access token
      */
-    static async verifyAndConsumeRefreshToken(
-        refreshToken: string,
+    static async refreshAccessToken(
+        userId: ObjectId,
         userAgent?: string,
         ipAddress?: string
-    ): Promise<{ userId: ObjectId; newAccessToken: string; newRefreshToken: string } | null> {
+    ): Promise<{ newAccessToken: string } | null> {
         try {
-            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
-
-            // Find user with this refresh token
+            // Find user with valid refresh tokens
             const user = await User.findOne({
-                "refreshTokens.token": hashedToken,
+                _id: userId,
                 "refreshTokens.isRevoked": false,
                 "refreshTokens.expiresAt": { $gt: new Date() },
             });
 
-            if (!user) {
+            if (!user || !user.refreshTokens.length) {
                 return null;
             }
 
-            // Find the specific token
-            const tokenIndex = user.refreshTokens.findIndex((rt) => rt.token === hashedToken && !rt.isRevoked && rt.expiresAt > new Date());
+            // Find the most recent valid refresh token
+            const validToken = user.refreshTokens
+                .filter(rt => !rt.isRevoked && rt.expiresAt > new Date())
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 
-            if (tokenIndex === -1) {
+            if (!validToken) {
                 return null;
             }
 
-            // Revoke the used refresh token
-            user.refreshTokens[tokenIndex].isRevoked = true;
-
-            // Generate new tokens
-            const newAccessToken = this.generateAccessToken(user._id as ObjectId);
-            const newRefreshTokenData = this.generateRefreshToken();
-
-            // Add new refresh token
-            user.refreshTokens.push({
-                token: newRefreshTokenData.hashedToken,
-                createdAt: new Date(),
-                expiresAt: newRefreshTokenData.expiresAt,
-                userAgent,
-                ipAddress,
-                isRevoked: false,
-            });
-
-            // Clean up expired and revoked tokens (keep last 5 active tokens)
-            const activeTokens = user.refreshTokens
-                .filter((rt) => !rt.isRevoked && rt.expiresAt > new Date())
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-                .slice(0, 5);
-
-            user.refreshTokens = [
-                ...activeTokens,
-                // Keep revoked tokens for audit trail but limit them
-                ...user.refreshTokens
-                    .filter((rt) => rt.isRevoked)
-                    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-                    .slice(0, 10),
-            ];
-
-            await user.save();
+            // Generate new access token
+            const newAccessToken = this.generateAccessToken(userId);
 
             return {
-                userId: user._id as ObjectId,
                 newAccessToken,
-                newRefreshToken: newRefreshTokenData.token,
             };
         } catch (error) {
-            console.error("Refresh token verification error:", error);
+            console.error("Access token refresh error:", error);
             return null;
         }
     }
@@ -208,11 +192,12 @@ export class TokenService {
     /**
      * Revoke refresh token (logout)
      */
-    static async revokeRefreshToken(refreshToken: string): Promise<boolean> {
+    static async revokeRefreshToken(userId: ObjectId): Promise<boolean> {
         try {
-            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
-
-            const result = await User.updateOne({ "refreshTokens.token": hashedToken }, { $set: { "refreshTokens.$.isRevoked": true } });
+            const result = await User.updateOne(
+                { _id: userId }, 
+                { $set: { "refreshTokens.$[].isRevoked": true } }
+            );
 
             return result.modifiedCount > 0;
         } catch (error) {
@@ -226,7 +211,10 @@ export class TokenService {
      */
     static async revokeAllRefreshTokens(userId: ObjectId): Promise<boolean> {
         try {
-            const result = await User.updateOne({ _id: userId }, { $set: { "refreshTokens.$[].isRevoked": true } });
+            const result = await User.updateOne(
+                { _id: userId }, 
+                { $set: { "refreshTokens.$[].isRevoked": true } }
+            );
 
             return result.modifiedCount > 0;
         } catch (error) {
@@ -236,7 +224,20 @@ export class TokenService {
     }
 
     /**
-     * Clear expired and revoked tokens (maintenance function)
+     * Clear access token cookie
+     */
+    static clearTokenCookies(res: Response): void {
+        res.clearCookie("accessToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            path: "/",
+        });
+        console.log("🗑️ Access token cookie cleared");
+    }
+
+    /**
+     * Clean up expired and revoked tokens (maintenance function)
      */
     static async cleanupExpiredTokens(): Promise<void> {
         try {
@@ -253,53 +254,9 @@ export class TokenService {
                     },
                 }
             );
+            console.log("🧹 Expired tokens cleaned up");
         } catch (error) {
             console.error("Token cleanup error:", error);
         }
     }
-
-    /**
-     * Clear cookies
-     */
-    static clearTokenCookies(res: Response): void {
-        res.clearCookie("accessToken", { path: "/" });
-        res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
-    }
-
-    /**
-     * Extract token from request (cookie or header)
-     */
-    static extractAccessToken(req: any): string | null {
-        // Try cookie first
-        let token = req.cookies?.accessToken;
-
-        // Fallback to Authorization header
-        if (!token) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
-        }
-
-        return token || null;
-    }
-
-    /**
-     * Extract refresh token from request
-     */
-    static extractRefreshToken(req: any): string | null {
-        return req.cookies?.refreshToken || null;
-    }
 }
-
-// Legacy function for backward compatibility
-export const generateTokenAndSetCookie = async (
-    res: Response,
-    userId: ObjectId,
-    tokenExpiryTime?: string,
-    userAgent?: string,
-    ipAddress?: string
-): Promise<string> => {
-    const { accessToken } = await TokenService.generateTokensAndSetCookies(res, userId, userAgent, ipAddress);
-    return accessToken;
-};

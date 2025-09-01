@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { TIMING_CONSTANTS } from "@/constants";
 
 // Memory-safe in-memory storage with size limits and TTL
 interface LockoutData {
@@ -170,7 +171,7 @@ export const handleFailedLogin = (req: Request, res: Response, next: NextFunctio
         const ipFailures = failedAttempts.get(ip) || { count: 0 };
         const updatedIpFailures = {
             count: ipFailures.count + 1,
-            lockedUntil: now + 15 * 60 * 1000, // 15 minutes
+            lockedUntil: now + TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
         };
         failedAttempts.set(ip, updatedIpFailures);
 

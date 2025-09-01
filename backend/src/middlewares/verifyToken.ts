@@ -1,192 +1,135 @@
-import { Request, Response, NextFunction } from "express";
-import { ObjectId, Types } from "mongoose";
-import { TokenService } from "@/utils/helpers";
+import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import { sendErrorResponse } from "@/utils";
 import { HTTP_STATUS, ERROR_MESSAGES } from "@/constants";
+import { TokenService } from "@/utils/helpers";
 
-// Extend Request interface to include user info
-declare global {
-    namespace Express {
-        interface Request {
-            userId?: string;
-            user?: any;
-        }
-    }
-}
-
-/**
- * Authentication middleware with automatic token refresh
- * Handles both access token verification and refresh token logic
- */
-export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const verifyAuthToken = (req: Request, res: Response, next: NextFunction) => {
     try {
-        console.log(`🔐 Auth middleware triggered for: ${req.method} ${req.path}`);
-        console.log(`🔐 Cookies received:`, Object.keys(req.cookies || {}));
-        
-        // Extract access token
+        // Extract access token from cookies or Authorization header
         const accessToken = TokenService.extractAccessToken(req);
-        console.log(`🔐 Access token extracted:`, accessToken ? 'Found' : 'Not found');
 
-        if (accessToken) {
-            // Verify access token
-            const payload = TokenService.verifyAccessToken(accessToken);
-            console.log(`🔐 Access token verification:`, payload ? 'Valid' : 'Invalid/Expired');
-
-            if (payload) {
-                // Valid access token
-                req.userId = payload.userId.toString();
-                console.log(`✅ Valid access token for user: ${req.userId}`);
-                return next();
-            }
+        if (!accessToken) {
+            return sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_TOKEN, HTTP_STATUS.UNAUTHORIZED);
         }
 
-        // Access token invalid/expired - try refresh
-        const refreshId = req.cookies?.refreshId;
-        console.log(`🔄 Refresh attempt - refreshId:`, refreshId ? 'Found' : 'Not found');
-
-        if (!refreshId) {
-            console.log(`❌ No refresh token available - requiring login`);
-            sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
-            return;
+        // Check if JWT_SECRET is defined
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            return sendErrorResponse(res, ERROR_MESSAGES.JWT_SECRET_NOT_DEFINED, HTTP_STATUS.INTERNAL_SERVER_ERROR);
         }
 
-        // Try to extract userId from expired access token (if available) - more robust approach
-        let userId: string | null = null;
+        // Verify the access token
+        const decoded = jwt.verify(accessToken, secret);
 
-        if (accessToken) {
-            try {
-                // Decode without verification to get userId (handle expired tokens)
-                const parts = accessToken.split(".");
-                if (parts.length === 3) {
-                    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-                    userId = payload.userId;
-                }
-            } catch {
-                // Ignore decode errors - continue with refresh attempt
-            }
+        // Type check and validate token structure
+        if (!decoded || typeof decoded === "string") {
+            return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_DECODING_FAILED, HTTP_STATUS.INTERNAL_SERVER_ERROR);
         }
 
-        // If we have refreshId but no userId from token, try to find user by refreshId
-        if (!userId) {
-            try {
-                const User = (await import("@/models/UserModel")).default;
-                const user = await User.findOne({
-                    refreshTokens: {
-                        $elemMatch: {
-                            token: refreshId,
-                            isRevoked: false,
-                            expiresAt: { $gt: new Date() },
-                        },
-                    },
-                });
-
-                if (user) {
-                    userId = (user._id as ObjectId).toString();
-                }
-            } catch (error) {
-                console.error("Error finding user by refresh token:", error);
-            }
+        // Validate token type (ensure it's an access token)
+        if (decoded.type !== "access") {
+            return sendErrorResponse(res, ERROR_MESSAGES.INVALID_TOKEN_TYPE, HTTP_STATUS.UNAUTHORIZED);
         }
 
-        // If still no userId, clear cookies and require login
-        if (!userId) {
-            TokenService.clearTokenCookies(res);
-            sendErrorResponse(res, "Session expired. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
-            return;
+        // Validate userId exists in token
+        if (!decoded.userId) {
+            return sendErrorResponse(res, ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD, HTTP_STATUS.UNAUTHORIZED);
         }
 
-        // Attempt to refresh the access token
-        const refreshResult = await TokenService.refreshAccessToken(userId as any, refreshId, req.get("User-Agent"), req.ip);
-
-        if (!refreshResult) {
-            // Refresh failed - clear cookies and require login
-            TokenService.clearTokenCookies(res);
-            sendErrorResponse(res, "Session expired. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
-            return;
-        }
-
-        // Successful refresh - set new access token
-        TokenService.setAccessTokenCookie(res, refreshResult.newAccessToken);
-        req.userId = userId;
-
-        console.log(`🔄 Access token refreshed for user: ${userId}`);
+        // Attach userId to request object
+        req.userId = decoded.userId.toString();
         next();
-    } catch (error) {
-        console.error("🚫 Authentication error:", error);
-        TokenService.clearTokenCookies(res);
-        sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("Token verification failed:", error.message);
+
+            // Handle specific JWT errors
+            if (error.name === "TokenExpiredError") {
+                return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_EXPIRED, HTTP_STATUS.UNAUTHORIZED);
+            } else if (error.name === "JsonWebTokenError") {
+                return sendErrorResponse(res, ERROR_MESSAGES.INVALID_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+            } else if (error.name === "NotBeforeError") {
+                return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_NOT_ACTIVE, HTTP_STATUS.UNAUTHORIZED);
+            } else {
+                return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_VERIFICATION_FAILED, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            // Fallback for non-Error objects
+            console.error("An unknown error occurred during token verification");
+            return sendErrorResponse(res, ERROR_MESSAGES.UNKNOWN_ERROR, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        }
     }
 };
 
 /**
- * Optional authentication middleware
- * Sets userId if valid token exists, but doesn't block request
+ * Optional: Middleware that attempts token refresh on expired access token
+ * Use this only on critical endpoints where you want seamless user experience
  */
-export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const verifyAuthTokenWithRefresh = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const accessToken = TokenService.extractAccessToken(req);
 
-        if (accessToken) {
-            const payload = TokenService.verifyAccessToken(accessToken);
-            if (payload) {
-                req.userId = payload.userId.toString();
+        if (!accessToken) {
+            return sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+        }
+
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            return sendErrorResponse(res, ERROR_MESSAGES.JWT_SECRET_NOT_DEFINED, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            // Try to verify the access token
+            const decoded = jwt.verify(accessToken, secret);
+
+            if (!decoded || typeof decoded === "string" || decoded.type !== "access" || !decoded.userId) {
+                return sendErrorResponse(res, ERROR_MESSAGES.INVALID_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+            }
+
+            req.userId = decoded.userId.toString();
+            next();
+        } catch (jwtError: unknown) {
+            // If access token is expired, try to refresh
+            if (jwtError instanceof Error && jwtError.name === "TokenExpiredError") {
+                const refreshToken = TokenService.extractRefreshToken(req);
+
+                if (!refreshToken) {
+                    return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_EXPIRED, HTTP_STATUS.UNAUTHORIZED);
+                }
+
+                // Attempt token refresh
+                const refreshResult = await TokenService.verifyAndConsumeRefreshToken(refreshToken, req.get("User-Agent"), req.ip);
+
+                if (!refreshResult) {
+                    return sendErrorResponse(res, ERROR_MESSAGES.INVALID_REFRESH_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+                }
+
+                // Set new tokens in cookies
+                TokenService.setTokenCookies(res, refreshResult.newAccessToken, refreshResult.newRefreshToken);
+
+                // Attach userId and continue
+                req.userId = refreshResult.userId.toString();
+                next();
+            } else {
+                // Handle other JWT errors
+                throw jwtError;
             }
         }
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("Token verification with refresh failed:", error.message);
 
-        next();
-    } catch (error) {
-        // Ignore errors in optional auth
-        next();
-    }
-};
-
-/**
- * Middleware to check if user is verified
- */
-export const requireVerification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.userId) {
-        sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
-        return;
-    }
-
-    try {
-        const User = (await import("@/models/UserModel")).default;
-        const user = await User.findById(req.userId);
-
-        if (!user) {
-            sendErrorResponse(res, ERROR_MESSAGES.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
-            return;
+            if (error.name === "JsonWebTokenError") {
+                return sendErrorResponse(res, ERROR_MESSAGES.INVALID_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+            } else if (error.name === "NotBeforeError") {
+                return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_NOT_ACTIVE, HTTP_STATUS.UNAUTHORIZED);
+            } else {
+                return sendErrorResponse(res, ERROR_MESSAGES.TOKEN_VERIFICATION_FAILED, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            console.error("An unknown error occurred during token verification with refresh");
+            return sendErrorResponse(res, ERROR_MESSAGES.UNKNOWN_ERROR, HTTP_STATUS.INTERNAL_SERVER_ERROR);
         }
-
-        if (!user.isVerified) {
-            sendErrorResponse(res, "Please verify your email before proceeding.", HTTP_STATUS.FORBIDDEN);
-            return;
-        }
-
-        req.user = user;
-        next();
-    } catch (error) {
-        console.error("Verification check error:", error);
-        sendErrorResponse(res, ERROR_MESSAGES.UNEXPECTED_ERROR, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 };
-
-/**
- * Admin-only middleware
- */
-export const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
-        sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
-        return;
-    }
-
-    if (req.user.role !== "admin") {
-        sendErrorResponse(res, "Admin access required.", HTTP_STATUS.FORBIDDEN);
-        return;
-    }
-
-    next();
-};
-
-// For backward compatibility
-export const verifyAuthToken = authenticateToken;

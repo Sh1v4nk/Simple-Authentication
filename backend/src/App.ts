@@ -17,7 +17,7 @@ const corsOptions = {
     origin: function (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
         const isDev = process.env.NODE_ENV !== "production";
 
-        console.log(`🌐 CORS request from origin: ${origin || 'no-origin'}`);
+        console.log(`🌐 CORS request from origin: ${origin || "no-origin"}`);
 
         // ✅ Allow requests without origin in production (health checks, internal requests)
         // but still validate origin when present for security
@@ -46,7 +46,6 @@ const corsOptions = {
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // restrict allowed methods
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // restrict allowed request headers
     exposedHeaders: ["RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"], // make custom headers visible to frontend
-    optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
 app.use(cors(corsOptions));

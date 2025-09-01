@@ -43,6 +43,10 @@ export const ERROR_MESSAGES = {
     TOKEN_EXPIRED: "Token has expired",
     INVALID_TOKEN: "Invalid token",
     TOKEN_DECODING_FAILED: "Token decoding failed",
+    INVALID_TOKEN_TYPE: "Invalid token type",
+    INVALID_TOKEN_PAYLOAD: "Invalid token payload",
+    TOKEN_NOT_ACTIVE: "Token not yet active",
+    INVALID_REFRESH_TOKEN: "Invalid or expired refresh token",
 
     // JWT errors
     JWT_SECRET_NOT_DEFINED: "JWT secret is not defined",

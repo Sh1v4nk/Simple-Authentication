@@ -1,6 +1,7 @@
 import rateLimit from "express-rate-limit";
 import slowDown from "express-slow-down";
 import { Request, Response, NextFunction } from "express";
+import { TIMING_CONSTANTS } from "@/constants";
 
 /**
  * Rate Limiting Configuration
@@ -9,7 +10,7 @@ import { Request, Response, NextFunction } from "express";
 
 // General API rate limiting
 export const generalRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     message: {
         error: "Too many requests from this IP, please try again later.",
@@ -18,7 +19,7 @@ export const generalRateLimit = rateLimit({
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 15 * 60 * 1000);
+        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
         const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
 
         res.status(429).json({
@@ -31,7 +32,7 @@ export const generalRateLimit = rateLimit({
 
 // Strict rate limiting for authentication endpoints
 export const authRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
     max: 5, // Limit each IP to 5 login attempts per windowMs
     message: {
         error: "Too many authentication attempts, please try again later.",
@@ -39,7 +40,7 @@ export const authRateLimit = rateLimit({
     },
     skipSuccessfulRequests: true, // Don't count successful requests
     handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 15 * 60 * 1000);
+        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
         const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
 
         res.status(429).json({
@@ -92,7 +93,7 @@ export const emailVerificationRateLimit = rateLimit({
 
 // Progressive delay middleware for repeated requests
 export const progressiveDelay = slowDown({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
     delayAfter: 5, // Allow 5 requests per windowMs at full speed
     delayMs: (hits) => hits * 500, // Add 500ms delay per request after delayAfter
     maxDelayMs: 5000, // Maximum delay of 5 seconds
@@ -146,7 +147,7 @@ export const rootRouteRateLimit = rateLimit({
 
 // Health check rate limiting - restrictive to prevent abuse
 export const healthCheckRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
     max: 3, // Allow 3 health checks per 15 minutes
     message: {
         error: "Too many health check requests, please reduce frequency.",
@@ -155,12 +156,33 @@ export const healthCheckRateLimit = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 15 * 60 * 1000);
+        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
         const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
 
         res.status(429).json({
             success: false,
             message: "Health check rate limit exceeded. Please reduce frequency.",
+            retryAfter: secondsUntilReset,
+        });
+    },
+});
+
+// Rate limiting for token refresh - more permissive than auth endpoints
+export const refreshTokenRateLimit = rateLimit({
+    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
+    max: 20, // Allow 20 refresh attempts per window (more than auth attempts)
+    message: {
+        error: "Too many token refresh attempts, please try again later.",
+        retryAfter: "15 minutes",
+    },
+    skipSuccessfulRequests: true, // Don't count successful refreshes
+    handler: (req: Request, res: Response) => {
+        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
+        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
+
+        res.status(429).json({
+            success: false,
+            message: "Too many token refresh attempts from this IP, please try again later.",
             retryAfter: secondsUntilReset,
         });
     },

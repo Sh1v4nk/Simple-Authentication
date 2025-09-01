@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { ObjectId } from "mongoose";
+import  { ObjectId } from "mongoose";
 import User from "@/models/UserModel";
 import { sendSuccessResponse, sendErrorResponse } from "@/utils";
 import { UserQueryOptimizer } from "@/utils/databaseOptimization";
@@ -69,14 +69,14 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
             emailVerificationTokenExpiresAt: new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES),
         });
 
-        // Generate secure tokens (refresh token stored in DB only)
-        const { accessToken } = await TokenService.generateTokensAndSetCookies(res, newUser._id as ObjectId, userAgent, clientIP);
-
         // Save user to database
         await newUser.save();
 
         // Send verification email
         await sendVerificationToken(newUser.username, newUser.email, emailVerificationToken);
+
+        // Generate authentication tokens
+        await TokenService.generateTokensAndSetCookies(res, newUser._id as ObjectId, userAgent, clientIP);
 
         // Send success response
         sendSuccessResponse(res, SUCCESS_MESSAGES.USER_CREATED, {
@@ -141,7 +141,7 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
 
         // Find user with optimized query (includes password)
         const user = await UserQueryOptimizer.findByEmailForAuth(email);
-        const dummyPassword = "dummyPasswordForComparison"; // Timing attack protection
+        const dummyPassword = "$2b$11$4p3K.aVOiYjP3HP6hBbrLulhwacAfdeHFZ0HLvbwwer7WhiHZ.X.S"; // Timing attack protection
 
         // Handle user not found (with timing attack protection)
         if (!user) {
@@ -180,7 +180,7 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
         // Successful login - clear failure flag and update user info
         res.locals.authenticationFailed = false;
         await UserQueryOptimizer.updateLoginInfo((user._id as ObjectId).toString(), clientIP, userAgent);
-        const { accessToken } = await TokenService.generateTokensAndSetCookies(res, user._id as ObjectId, userAgent, clientIP);
+        await TokenService.generateTokensAndSetCookies(res, user._id as ObjectId, userAgent, clientIP);
 
         // Send success response
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_IN_SUCCESSFUL, {
@@ -201,12 +201,14 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
  */
 export const signout = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Revoke refresh tokens and clear access token cookie
-        if (req.userId) {
-            const refreshId = req.cookies?.refreshId;
-            await TokenService.revokeRefreshToken(req.userId as unknown as ObjectId, refreshId);
+        // Extract and revoke refresh token
+        const refreshToken = TokenService.extractRefreshToken(req);
+
+        if (refreshToken) {
+            await TokenService.revokeRefreshToken(refreshToken);
         }
 
+        // Clear authentication cookies
         TokenService.clearTokenCookies(res);
 
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_OUT_SUCCESSFUL);
@@ -367,72 +369,27 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     try {
         const { clientIP, userAgent } = getClientInfo(req);
 
-        // Get refresh token identifier from cookie
-        const refreshId = req.cookies?.refreshId;
+        // Extract refresh token from request
+        const refreshToken = TokenService.extractRefreshToken(req);
 
-        if (!refreshId) {
-            sendErrorResponse(res, "No refresh token found. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
+        if (!refreshToken) {
+            sendErrorResponse(res, "Refresh token not provided", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
-        // Try to extract userId from expired access token (if available)
-        let userId: string | null = null;
-        const accessToken = TokenService.extractAccessToken(req);
-
-        if (accessToken) {
-            try {
-                // Decode without verification to get userId (handle expired tokens)
-                const parts = accessToken.split(".");
-                if (parts.length === 3) {
-                    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-                    userId = payload.userId;
-                }
-            } catch {
-                // Ignore decode errors
-            }
-        }
-
-        // If no userId from token, try to find user by refreshId
-        if (!userId) {
-            try {
-                const user = await User.findOne({
-                    refreshTokens: {
-                        $elemMatch: {
-                            token: refreshId,
-                            isRevoked: false,
-                            expiresAt: { $gt: new Date() },
-                        },
-                    },
-                });
-
-                if (user) {
-                    userId = (user._id as ObjectId).toString();
-                }
-            } catch (error) {
-                console.error("Error finding user by refresh token:", error);
-            }
-        }
-
-        if (!userId) {
-            TokenService.clearTokenCookies(res);
-            sendErrorResponse(res, "Invalid refresh token. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
-            return;
-        }
-
-        // Try to refresh access token using refresh token
-        const result = await TokenService.refreshAccessToken(userId as any, refreshId, userAgent, clientIP);
+        // Verify and consume refresh token
+        const result = await TokenService.verifyAndConsumeRefreshToken(refreshToken, userAgent, clientIP);
 
         if (!result) {
-            TokenService.clearTokenCookies(res);
-            sendErrorResponse(res, "Refresh token expired. Please sign in again.", HTTP_STATUS.UNAUTHORIZED);
+            sendErrorResponse(res, "Invalid or expired refresh token", HTTP_STATUS.UNAUTHORIZED);
             return;
         }
 
-        // Set new access token cookie
-        TokenService.setAccessTokenCookie(res, result.newAccessToken);
+        // Set new tokens in cookies
+        TokenService.setTokenCookies(res, result.newAccessToken, result.newRefreshToken);
 
-        sendSuccessResponse(res, "Access token refreshed successfully", {
-            message: "Token refreshed successfully",
+        sendSuccessResponse(res, "Tokens refreshed successfully", {
+            accessToken: result.newAccessToken,
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
@@ -448,11 +405,26 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
  */
 export const revokeAllTokens = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Clear current auth cookie and revoke all refresh tokens
-        await TokenService.revokeAllRefreshTokens(req.userId as unknown as ObjectId);
+        // Check if user is authenticated
+        if (!req.userId) {
+            sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
+            return;
+        }
+
+        const userId = req.userId as unknown as ObjectId;
+
+        // Revoke all refresh tokens for the user
+        const success = await TokenService.revokeAllRefreshTokens(userId);
+
+        if (!success) {
+            sendErrorResponse(res, "Failed to revoke tokens", HTTP_STATUS.INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        // Clear cookies for current session
         TokenService.clearTokenCookies(res);
 
-        sendSuccessResponse(res, "Signed out from all devices successfully.");
+        sendSuccessResponse(res, "All tokens revoked successfully");
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;
         sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);

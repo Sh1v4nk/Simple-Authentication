@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import User from "@/models/UserModel";
 import type { IUser } from "@/types/UserInterface";
+import { TIMING_CONSTANTS } from "@/constants";
 
 /**
  * Database optimization utilities for efficient querying and indexing
@@ -25,7 +26,7 @@ export class UserQueryOptimizer {
 
         // Lock account after 5 failed attempts for 15 minutes
         if (user.loginAttempts >= 5) {
-            user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+            user.lockUntil = new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES); // 15 minutes
             await user.save();
             return false; // Account locked
         }

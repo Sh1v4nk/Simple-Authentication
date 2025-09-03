@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import  { ObjectId } from "mongoose";
+import { ObjectId } from "mongoose";
 import User from "@/models/UserModel";
 import { sendSuccessResponse, sendErrorResponse } from "@/utils";
 import { UserQueryOptimizer } from "@/utils/databaseOptimization";
@@ -37,6 +37,7 @@ const getClientInfo = (req: Request) => {
 const sanitizeUserForResponse = (user: any) => ({
     ...user,
     password: undefined,
+    refreshTokens: undefined,
     loginAttempts: undefined,
     lockUntil: undefined,
     ipAddresses: undefined,
@@ -44,6 +45,8 @@ const sanitizeUserForResponse = (user: any) => ({
     resetPasswordTokenExpiresAt: undefined,
     emailVerificationToken: undefined,
     emailVerificationTokenExpiresAt: undefined,
+    __v: undefined,
+    _id: user._id?.toString(),
 });
 
 /**
@@ -184,7 +187,7 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
 
         // Send success response
         sendSuccessResponse(res, SUCCESS_MESSAGES.SIGN_IN_SUCCESSFUL, {
-            user: sanitizeUserForResponse(user),
+            user: sanitizeUserForResponse(user.toObject()),
         });
     } catch (error: unknown) {
         res.locals.authenticationFailed = true; // Flag for middleware on errors

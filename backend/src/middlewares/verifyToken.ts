@@ -63,8 +63,7 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * Optional: Middleware that attempts token refresh on expired access token
- * Use this only on critical endpoints where you want seamless user experience
+ * Middleware that attempts token refresh on expired access token
  */
 export const verifyAuthTokenWithRefresh = async (req: Request, res: Response, next: NextFunction) => {
     try {

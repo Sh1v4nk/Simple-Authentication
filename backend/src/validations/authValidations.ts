@@ -22,7 +22,7 @@ export const passwordSchema = z
 
 export const usernameSchema = z
     .string()
-    .min(1, { message: VALIDATION_MESSAGES.USERNAME_REQUIRED })
+    .min(2, { message: VALIDATION_MESSAGES.USERNAME_REQUIRED })
     .max(20, { message: VALIDATION_MESSAGES.USERNAME_MAX });
 
 export const tokenSchema = z.string().length(40, { message: VALIDATION_MESSAGES.RESET_TOKEN_LENGTH });

@@ -90,7 +90,6 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     {
         timestamps: true,
-        // Remove collation to avoid text index conflicts
     }
 );
 

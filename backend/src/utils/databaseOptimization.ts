@@ -11,7 +11,7 @@ export class UserQueryOptimizer {
      * Find user by email with password included (for authentication)
      */
     static async findByEmailForAuth(email: string): Promise<IUser | null> {
-        return User.findOne({ email }).select("+password").lean();
+        return User.findOne({ email }).select("+password");
     }
 
     /**

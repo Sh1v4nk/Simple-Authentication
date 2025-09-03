@@ -187,6 +187,15 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        if (!user.isVerified) {
+            // Allow signin but send verification email for better UX
+            const newVerificationToken = generateEmailVerificationToken();
+            user.emailVerificationToken = newVerificationToken;
+            user.emailVerificationTokenExpiresAt = new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
+            await user.save();
+            await sendVerificationToken(user.username, user.email, newVerificationToken);
+        }
+
         // Successful login - clear failure flag and update user info
         res.locals.authenticationFailed = false;
         await UserQueryOptimizer.updateLoginInfo((user._id as ObjectId).toString(), clientIP, userAgent);

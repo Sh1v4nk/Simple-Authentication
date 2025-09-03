@@ -1,16 +1,23 @@
 import type { Request, Response } from "express";
 import { ObjectId } from "mongoose";
 import User from "@/models/UserModel";
-import { sendSuccessResponse, sendErrorResponse } from "@/utils";
-import { UserQueryOptimizer } from "@/utils/databaseOptimization";
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES, TIMING_CONSTANTS } from "@/constants";
-import { hashPassword, comparePassword, generateEmailVerificationToken, generateResetPasswordToken, TokenService } from "@/utils/helpers";
 import {
     sendVerificationToken,
     successfulVerificationEmail,
     resetPasswordEmail,
     passwordResetSuccessfulEmail,
 } from "@/configs/NodeMailer/SendEmail";
+import {
+    sendSuccessResponse,
+    sendErrorResponse,
+    UserQueryOptimizer,
+    hashPassword,
+    comparePassword,
+    generateEmailVerificationToken,
+    generateResetPasswordToken,
+    TokenService,
+} from "@/utils";
 
 /**
  * Extract client information from request with enhanced IP detection

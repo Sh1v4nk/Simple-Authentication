@@ -1,8 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { sendErrorResponse } from "@/utils";
+import { sendErrorResponse, TokenService } from "@/utils";
 import { HTTP_STATUS, ERROR_MESSAGES } from "@/constants";
-import { TokenService } from "@/utils/helpers";
 
 export const verifyAuthToken = (req: Request, res: Response, next: NextFunction) => {
     try {

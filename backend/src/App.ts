@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
-import { ensureIndexes, checkDatabaseHealth } from "@/utils/databaseOptimization";
+import { ensureIndexes, checkDatabaseHealth } from "@/utils";
 import { generalRateLimit, routeScanningProtection, rootRouteRateLimit, healthCheckRateLimit } from "@/middlewares";
 
 const app = express();

@@ -1,4 +1,4 @@
-import { TokenService } from "@/utils/helpers/tokenService";
+import { TokenService } from "./tokenService";
 
 /**
  * Token cleanup maintenance script

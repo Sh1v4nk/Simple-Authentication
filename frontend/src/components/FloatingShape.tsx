@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { FloatingShapeInterface } from "@/types";
+import { FloartingShpaeInterface } from "@/types";
 
-const FloatingShape: React.FC<FloatingShapeInterface> = ({
+const FloatingShape: React.FC<FloartingShpaeInterface> = ({
     color,
     size,
     top,

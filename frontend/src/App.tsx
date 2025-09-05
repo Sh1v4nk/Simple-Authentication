@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { RouterProvider } from "react-router-dom";
 
@@ -10,14 +10,9 @@ import { floatingShapeConfig } from "@/utils/floatingShapeConfig";
 
 function App() {
     const { verifyAuth, isCheckingAuth } = useAuthStore();
-    const hasVerified = useRef(false);
 
     useEffect(() => {
-        // Only verify auth once on app mount
-        if (!hasVerified.current) {
-            hasVerified.current = true;
-            verifyAuth();
-        }
+        verifyAuth();
     }, [verifyAuth]);
 
     return (

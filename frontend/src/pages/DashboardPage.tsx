@@ -9,35 +9,15 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { formatDate } from "@/utils/dateUtils";
 import { motion } from "framer-motion";
-import { Loader2, LogOut, Smartphone } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 function DashboardPage() {
-    const { signout, revokeAllTokens, user, isLoading } = useAuthStore();
-    const [isRevokingAll, setIsRevokingAll] = useState(false);
+    const { signout, user, isLoading } = useAuthStore();
 
     if (!user) return;
 
     const handleLogout = async () => {
-        try {
-            await signout();
-            toast.success("Signed out successfully");
-        } catch (error) {
-            toast.error("Error signing out");
-        }
-    };
-
-    const handleLogoutAllDevices = async () => {
-        try {
-            setIsRevokingAll(true);
-            await revokeAllTokens();
-            toast.success("Logged out from all devices successfully");
-        } catch (error) {
-            toast.error("Error logging out from all devices");
-        } finally {
-            setIsRevokingAll(false);
-        }
+        await signout();
     };
     return (
         <motion.div
@@ -85,16 +65,12 @@ function DashboardPage() {
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex flex-col space-y-3">
-                    {/* Regular Sign Out Button */}
+                <CardFooter className="flex flex-col space-y-4">
                     <Button
                         onClick={handleLogout}
                         className={`w-full bg-purple-500 transition-colors hover:bg-purple-600 ${
-                            isLoading || isRevokingAll
-                                ? "pointer-events-none opacity-50"
-                                : ""
+                            isLoading ? "pointer-events-none opacity-50" : ""
                         }`}
-                        disabled={isLoading || isRevokingAll}
                     >
                         {isLoading ? (
                             <>
@@ -102,34 +78,7 @@ function DashboardPage() {
                                 Signing Out...
                             </>
                         ) : (
-                            <>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Sign Out
-                            </>
-                        )}
-                    </Button>
-
-                    {/* Logout from All Devices Button */}
-                    <Button
-                        onClick={handleLogoutAllDevices}
-                        variant="outline"
-                        className={`w-full border-red-500 text-red-400 transition-colors hover:bg-red-500 hover:text-white ${
-                            isLoading || isRevokingAll
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                        }`}
-                        disabled={isLoading || isRevokingAll}
-                    >
-                        {isRevokingAll ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Logging Out All Devices...
-                            </>
-                        ) : (
-                            <>
-                                <Smartphone className="mr-2 h-4 w-4" />
-                                Logout from All Devices
-                            </>
+                            "Sign Out"
                         )}
                     </Button>
                 </CardFooter>

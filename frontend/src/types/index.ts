@@ -1,5 +1,5 @@
 // Background FloartingShpae interface
-export interface FloatingShapeInterface {
+export interface FloartingShpaeInterface {
     color: string;
     size: string;
     top: string;
@@ -34,10 +34,6 @@ export interface AuthState {
     passwordError: string[] | null;
     usernameError: string[] | null;
     tokenError: string[] | null;
-    rateLimited?: boolean;
-    rateLimitRetryAfter?: number;
-    accountLocked?: boolean;
-    lockedUntil?: string;
 
     signup: (email: string, password: string, username: string) => Promise<void>;
     signin: (email: string, password: string) => Promise<void>;
@@ -47,7 +43,6 @@ export interface AuthState {
     verifyEmail: (emailCode: string) => Promise<void>;
     resendOTP: () => Promise<void>;
     verifyAuth: () => Promise<void>;
-    revokeAllTokens: () => Promise<void>;
 }
 
 // ValidationError interface

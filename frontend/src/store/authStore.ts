@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import axios from "@/utils/axiosConfig";
+import axios from "axios";
 import { AuthState } from "@/types";
 import { handleError } from "@/utils/handelErrors";
 
 const API_URL =
     import.meta.env.MODE === "development"
-        ? "http://localhost:3000/api/auth"
+        ? "http://localhost:3000/api/auth" // Local URL in development
         : import.meta.env.VITE_SERVER_URL || "/api/auth";
+
+axios.defaults.withCredentials = true;
 
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
@@ -20,10 +22,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     passwordError: null,
     usernameError: null,
     tokenError: [],
-    rateLimited: false,
-    rateLimitRetryAfter: 0,
-    accountLocked: false,
-    lockedUntil: undefined,
 
     signup: async (email, password, username) => {
         set({
@@ -34,10 +32,6 @@ export const useAuthStore = create<AuthState>((set) => ({
             passwordError: null,
             usernameError: null,
             generalErrors: [],
-            rateLimited: false,
-            rateLimitRetryAfter: 0,
-            accountLocked: false,
-            lockedUntil: undefined,
         });
 
         try {
@@ -68,10 +62,6 @@ export const useAuthStore = create<AuthState>((set) => ({
             passwordError: null,
             usernameError: null,
             generalErrors: [],
-            rateLimited: false,
-            rateLimitRetryAfter: 0,
-            accountLocked: false,
-            lockedUntil: undefined,
         });
 
         try {
@@ -170,19 +160,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     verifyAuth: async () => {
         set({ isCheckingAuth: true, error: null });
-
-        // Quick check: if there's no auth storage, skip the network request
-        const authStorage = localStorage.getItem("auth-storage");
-        if (!authStorage) {
-            set({
-                error: null,
-                isCheckingAuth: false,
-                isAuthenticated: false,
-                user: null,
-            });
-            return;
-        }
-
         try {
             const response = await axios.get(`${API_URL}/verify-auth`);
             set({
@@ -190,30 +167,13 @@ export const useAuthStore = create<AuthState>((set) => ({
                 isAuthenticated: true,
                 isCheckingAuth: false,
             });
-        } catch (error: any) {
-            // Don't log errors for verify-auth as 401 is expected when not logged in
+        } catch (error) {
             set({
                 error: null,
                 isCheckingAuth: false,
                 isAuthenticated: false,
                 user: null,
             });
-        }
-    },
-
-    revokeAllTokens: async () => {
-        set({ isLoading: true, error: null });
-        try {
-            await axios.post(`${API_URL}/revoke-all`);
-            set({
-                user: null,
-                isAuthenticated: false,
-                error: null,
-                isLoading: false,
-                message: "All devices logged out successfully",
-            });
-        } catch (error) {
-            handleError(error, set);
         }
     },
 }));

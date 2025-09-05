@@ -33,13 +33,7 @@ function SignUpPage() {
         passwordError,
         usernameError,
         generalErrors,
-        rateLimited,
-        rateLimitRetryAfter,
-        accountLocked,
     } = useAuthStore();
-
-    // Calculate if form should be disabled
-    const isFormDisabled = isLoading || rateLimited || accountLocked;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,7 +82,6 @@ function SignUpPage() {
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    disabled={isFormDisabled}
                                     required
                                 />
                             </div>
@@ -109,7 +102,6 @@ function SignUpPage() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    disabled={isFormDisabled}
                                     required
                                 />
                             </div>
@@ -126,7 +118,6 @@ function SignUpPage() {
                                     placeholder="Password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    disabled={isFormDisabled}
                                     required
                                 />
                             </div>
@@ -158,21 +149,15 @@ function SignUpPage() {
                         <Button
                             type="submit"
                             className={`w-full bg-purple-500 transition-colors hover:bg-purple-600 ${
-                                isFormDisabled
-                                    ? "pointer-events-none opacity-50"
-                                    : ""
+                                isLoading ? "pointer-events-none opacity-50" : ""
                             }`}
-                            disabled={isFormDisabled}
+                            disabled={isLoading}
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
                                     Signing Up...
                                 </>
-                            ) : rateLimited ? (
-                                `Rate Limited - Try again in ${Math.ceil((rateLimitRetryAfter || 900) / 60)} min`
-                            ) : accountLocked ? (
-                                `Account Locked - Try again later`
                             ) : (
                                 "Sign Up"
                             )}

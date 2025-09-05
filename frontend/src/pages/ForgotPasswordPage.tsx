@@ -18,18 +18,8 @@ import { formatDate } from "@/utils/dateUtils";
 
 function ForgotPasswordPage() {
     const [email, setEmail] = useState<string>("");
-    const {
-        forgotPassword,
-        isLoading,
-        emailError,
-        message,
-        rateLimited,
-        rateLimitRetryAfter,
-        accountLocked,
-    } = useAuthStore();
+    const { forgotPassword, isLoading, emailError, message } = useAuthStore();
 
-    // Calculate if form should be disabled
-    const isFormDisabled = isLoading || rateLimited || accountLocked;
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         await forgotPassword(email);
@@ -75,7 +65,6 @@ function ForgotPasswordPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
-                                        disabled={isFormDisabled}
                                         required
                                     />
                                 </div>
@@ -88,21 +77,15 @@ function ForgotPasswordPage() {
                             <Button
                                 type="submit"
                                 className={`w-full rounded-lg bg-purple-500 py-2 font-medium transition-colors hover:bg-purple-600 ${
-                                    isFormDisabled
-                                        ? "pointer-events-none opacity-50"
-                                        : ""
+                                    isLoading ? "pointer-events-none opacity-50" : ""
                                 }`}
-                                disabled={isFormDisabled}
+                                disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
                                         Sending Reset Link..
                                     </>
-                                ) : rateLimited ? (
-                                    `Rate Limited - Try again in ${Math.ceil((rateLimitRetryAfter || 3600) / 60)} min`
-                                ) : accountLocked ? (
-                                    `Account Locked - Try again later`
                                 ) : (
                                     "Send Reset Link"
                                 )}

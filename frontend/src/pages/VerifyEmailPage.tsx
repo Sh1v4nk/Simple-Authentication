@@ -20,19 +20,8 @@ function EmailVerifyPage() {
     const [isResendDisabled, setIsResendDisabled] = useState(false);
     const [resendCountDown, setResendCountDown] = useState(60);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-    const {
-        verifyEmail,
-        resendOTP,
-        isLoading,
-        generalErrors,
-        rateLimited,
-        rateLimitRetryAfter,
-        accountLocked,
-    } = useAuthStore();
+    const { verifyEmail, resendOTP, isLoading, generalErrors } = useAuthStore();
     const navigate = useNavigate();
-
-    // Calculate if form should be disabled
-    const isFormDisabled = isLoading || rateLimited || accountLocked;
 
     const handleChange = (index: number, value: string) => {
         if (/^\d?$/.test(value)) {
@@ -175,7 +164,6 @@ function EmailVerifyPage() {
                                     onPaste={handlePaste}
                                     ref={(el) => (inputRefs.current[index] = el)}
                                     className="h-12 w-12 rounded-md border-zinc-700 bg-zinc-800 text-center text-lg font-semibold text-white focus:border-purple-500 focus:ring-purple-500/20 max-sm:h-9 max-sm:w-9"
-                                    disabled={isFormDisabled}
                                 />
                             ))}
                         </div>
@@ -190,40 +178,26 @@ function EmailVerifyPage() {
                         <Button
                             type="submit"
                             className={`w-full rounded-lg bg-purple-500 py-2 font-medium text-white transition-colors hover:bg-purple-600 ${
-                                isFormDisabled
-                                    ? "pointer-events-none opacity-50"
-                                    : ""
+                                isLoading ? "pointer-events-none opacity-50" : ""
                             }`}
-                            disabled={isFormDisabled}
+                            disabled={isLoading}
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
                                     Verifying Email...
                                 </>
-                            ) : rateLimited ? (
-                                `Rate Limited - Try again in ${Math.ceil((rateLimitRetryAfter || 300) / 60)} min`
-                            ) : accountLocked ? (
-                                `Account Locked - Try again later`
                             ) : (
                                 "Verify Email"
                             )}
                         </Button>
                         <div className="mt-4 text-center text-sm">
-                            {isResendDisabled || isFormDisabled ? (
+                            {isResendDisabled ? (
                                 <p className="text-zinc-400">
-                                    {rateLimited ? (
-                                        `Rate Limited - Try again in ${Math.ceil((rateLimitRetryAfter || 300) / 60)} min`
-                                    ) : accountLocked ? (
-                                        "Account Locked - Try again later"
-                                    ) : (
-                                        <>
-                                            Resend OTP available in{" "}
-                                            <span className="font-semibold">
-                                                {resendCountDown}s
-                                            </span>
-                                        </>
-                                    )}
+                                    Resend OTP available in{" "}
+                                    <span className="font-semibold">
+                                        {resendCountDown}s
+                                    </span>
                                 </p>
                             ) : (
                                 <p

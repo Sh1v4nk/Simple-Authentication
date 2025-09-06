@@ -13,7 +13,7 @@ function App() {
 
     useEffect(() => {
         verifyAuth();
-    }, [verifyAuth]);
+    }, []);
 
     return (
         <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">

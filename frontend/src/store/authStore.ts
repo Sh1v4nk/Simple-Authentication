@@ -26,10 +26,18 @@ const processQueue = (error: any, token: string | null = null) => {
     failedQueue = [];
 };
 
+// Create a flag to prevent interceptor interference with auth verification
+let isVerifyingAuth = false;
+
 axios.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+
+        // Don't intercept verify-auth requests or if we're already verifying auth
+        if (originalRequest.url?.includes("/verify-auth") || isVerifyingAuth) {
+            return Promise.reject(error);
+        }
 
         // Check if error is 401 and we haven't already tried to refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -56,9 +64,14 @@ axios.interceptors.response.use(
             } catch (refreshError) {
                 processQueue(refreshError, null);
 
-                // Refresh failed, redirect to login
-                const { signout } = useAuthStore.getState();
-                signout();
+                // Refresh failed, clear auth state without making additional requests
+                useAuthStore.setState({
+                    user: null,
+                    isAuthenticated: false,
+                    error: null,
+                    isLoading: false,
+                    isCheckingAuth: false,
+                });
 
                 return Promise.reject(refreshError);
             } finally {
@@ -69,7 +82,8 @@ axios.interceptors.response.use(
         return Promise.reject(error);
     },
 );
-export const useAuthStore = create<AuthState>((set, get) => ({
+
+export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isAuthenticated: false,
     error: null,
@@ -108,6 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 generalErrors: [],
             });
         } catch (error) {
+            set({ isLoading: false });
             handleError(error, set);
         }
     },
@@ -137,6 +152,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 generalErrors: [],
             });
         } catch (error) {
+            set({ isLoading: false });
             handleError(error, set);
         }
     },
@@ -158,6 +174,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 tokenError: [],
             });
         } catch (error) {
+            // Always clear auth state even if signout request fails
             set({
                 user: null,
                 isAuthenticated: false,
@@ -201,8 +218,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const response = await axios.post(`${API_URL}/refresh`);
             return response.data;
         } catch (error) {
-            const { signout } = get();
-            signout();
+            // Clear auth state without triggering signout
+            set({
+                user: null,
+                isAuthenticated: false,
+                error: null,
+                isLoading: false,
+                isCheckingAuth: false,
+            });
             throw error;
         }
     },
@@ -222,6 +245,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
             return response.data;
         } catch (error) {
+            set({ isLoading: false });
             handleError(error, set);
         }
     },
@@ -247,6 +271,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
             set({ isLoading: false, message: response.data.message });
         } catch (error) {
+            set({ isLoading: false });
             handleError(error, set);
         }
     },
@@ -264,12 +289,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 tokenError: [],
             });
         } catch (error) {
+            set({ isLoading: false });
             handleError(error, set);
         }
     },
 
     verifyAuth: async () => {
         set({ isCheckingAuth: true, error: null });
+        isVerifyingAuth = true;
+
         try {
             const response = await axios.get(`${API_URL}/verify-auth`);
             set({
@@ -284,6 +312,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isAuthenticated: false,
                 user: null,
             });
+        } finally {
+            isVerifyingAuth = false;
         }
     },
 }));

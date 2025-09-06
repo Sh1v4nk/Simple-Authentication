@@ -12,13 +12,18 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 function DashboardPage() {
-    const { signout, user, isLoading } = useAuthStore();
+    const { signout, logoutAllDevices, user, isLoading } = useAuthStore();
 
     if (!user) return;
 
     const handleLogout = async () => {
         await signout();
     };
+
+    const handleLogoutFromAllDevices = async () => {
+        await logoutAllDevices();
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -79,6 +84,21 @@ function DashboardPage() {
                             </>
                         ) : (
                             "Sign Out"
+                        )}
+                    </Button>
+                    <Button
+                        onClick={handleLogoutFromAllDevices}
+                        className={`w-full bg-red-500 transition-colors hover:bg-red-600 ${
+                            isLoading ? "pointer-events-none opacity-50" : ""
+                        }`}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
+                                Signing Out from All Devices...
+                            </>
+                        ) : (
+                            "Sign Out from All Devices"
                         )}
                     </Button>
                 </CardFooter>

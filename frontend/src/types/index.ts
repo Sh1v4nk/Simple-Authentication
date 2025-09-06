@@ -43,6 +43,8 @@ export interface AuthState {
     verifyEmail: (emailCode: string) => Promise<void>;
     resendOTP: () => Promise<void>;
     verifyAuth: () => Promise<void>;
+    logoutAllDevices: () => Promise<void>;
+    refreshToken: () => Promise<any>;
 }
 
 // ValidationError interface

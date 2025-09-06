@@ -26,7 +26,6 @@ const processQueue = (error: any, token: string | null = null) => {
     failedQueue = [];
 };
 
-// Axios interceptor for automatic token refresh
 axios.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -56,7 +55,11 @@ axios.interceptors.response.use(
                 return axios(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError, null);
-                // Clear auth state on refresh failure - will be handled by verifyAuth
+
+                // Refresh failed, redirect to login
+                const { signout } = useAuthStore.getState();
+                signout();
+
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
@@ -66,7 +69,6 @@ axios.interceptors.response.use(
         return Promise.reject(error);
     },
 );
-
 export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     isAuthenticated: false,

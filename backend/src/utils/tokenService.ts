@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { Response } from "express";
-import { ObjectId } from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import User from "@/models/UserModel";
 import { TIMING_CONSTANTS } from "@/constants";
 
@@ -266,6 +266,29 @@ export class TokenService {
         }
 
         return token || null;
+    }
+
+    /**
+     * Check if refresh token is still valid (not revoked)
+     */
+    static async isRefreshTokenValid(refreshToken: string, userId: ObjectId): Promise<boolean> {
+        try {
+            // Hash the token to match stored format
+            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+
+            // Find user with this refresh token that is not revoked and not expired
+            const user = await User.findOne({
+                _id: userId,
+                "refreshTokens.token": hashedToken,
+                "refreshTokens.isRevoked": false,
+                "refreshTokens.expiresAt": { $gt: new Date() },
+            });
+
+            return !!user;
+        } catch (error) {
+            console.error("❌ Error validating refresh token:", error);
+            return false;
+        }
     }
 
     /**

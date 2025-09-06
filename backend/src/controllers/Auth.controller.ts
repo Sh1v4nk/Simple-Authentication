@@ -311,36 +311,6 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
- * Verify Authentication Status
- * Verifies if user is authenticated and returns user info
- * @route GET /api/auth/verify
- */
-export const verifyAuth = async (req: Request, res: Response): Promise<void> => {
-    try {
-        if (!req.userId) {
-            sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
-            return;
-        }
-
-        const user = await User.findById(req.userId);
-
-        if (!user) {
-            sendErrorResponse(res, ERROR_MESSAGES.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
-            return;
-        }
-
-        // Send user data (without sensitive information)
-        sendSuccessResponse(res, SUCCESS_MESSAGES.USER_FOUND, {
-            user: sanitizeUserForResponse(user.toObject({ versionKey: false })),
-        });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
-        sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-        console.error("❌ Verify auth error:", error);
-    }
-};
-
-/**
  * Resend OTP
  * Generates and sends a new email verification token
  * @route POST /api/auth/resend-otp
@@ -380,6 +350,56 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
+ * Verify Authentication Status
+ * Verifies if user is authenticated and returns user info
+ * @route GET /api/auth/verify
+ */
+export const verifyAuth = async (req: Request, res: Response): Promise<void> => {
+    try {
+        if (!req.userId) {
+            sendErrorResponse(res, ERROR_MESSAGES.UNAUTHORIZED_USER_ID, HTTP_STATUS.UNAUTHORIZED);
+            return;
+        }
+
+        const user = await User.findById(req.userId);
+
+        if (!user) {
+            sendErrorResponse(res, ERROR_MESSAGES.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+            return;
+        }
+
+        // CRITICAL FIX: Also validate refresh token to ensure it hasn't been revoked
+        const refreshToken = TokenService.extractRefreshToken(req);
+
+        if (!refreshToken) {
+            // No refresh token means user should be logged out
+            TokenService.clearTokenCookies(res);
+            sendErrorResponse(res, "No refresh token found", HTTP_STATUS.UNAUTHORIZED);
+            return;
+        }
+
+        // Verify refresh token is still valid (not revoked)
+        const isRefreshTokenValid = await TokenService.isRefreshTokenValid(refreshToken, req.userId as unknown as ObjectId);
+
+        if (!isRefreshTokenValid) {
+            // Refresh token has been revoked, clear cookies and force logout
+            TokenService.clearTokenCookies(res);
+            sendErrorResponse(res, "Session has been revoked", HTTP_STATUS.UNAUTHORIZED);
+            return;
+        }
+
+        // Send user data (without sensitive information)
+        sendSuccessResponse(res, SUCCESS_MESSAGES.USER_FOUND, {
+            user: sanitizeUserForResponse(user.toObject({ versionKey: false })),
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN_ERROR;
+        sendErrorResponse(res, message, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        console.error("❌ Verify auth error:", error);
+    }
+};
+
+/**
  * Refresh Token
  * Generates new access token using refresh token
  * @route POST /api/auth/refresh
@@ -400,6 +420,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         const result = await TokenService.verifyAndConsumeRefreshToken(refreshToken, userAgent, clientIP);
 
         if (!result) {
+            // Clear cookies if refresh fails
+            TokenService.clearTokenCookies(res);
             sendErrorResponse(res, "Invalid or expired refresh token", HTTP_STATUS.UNAUTHORIZED);
             return;
         }

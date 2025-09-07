@@ -1,0 +1,58 @@
+services:
+    mongodb:
+        image: mongo:8.0
+        command: mongod --noauth
+        ports:
+            - "27017:27017"
+        volumes:
+            - mongodb_data:/data/db
+        healthcheck:
+            test: ["CMD", "mongosh", "--eval", "db.admin.runCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+        restart: unless-stopped
+
+    backend:
+        image: oven/bun:1.2.2-alpine
+        working_dir: /app
+        volumes:
+            - ./backend:/app
+            - backend_node_modules:/app/node_modules
+        command: sh -c "bun install && bun run dev"
+        ports:
+            - "3000:3000"
+        environment:
+            - MONGO_URI=mongodb://mongodb:27017/Simple-Auth
+            - NODE_ENV=development
+            - JWT_SECRET=your-jwt-secret-for-dev
+            - SALT_ROUNDS=10
+            - CLIENT_URL=http://localhost:5173
+            - TEMP_EMAIL=your-temp@email.com # create from from ethereal.email
+            - TEMP_EMAIL_PASSWORD=your-temp-password # create from from ethereal.email
+        depends_on:
+            mongodb:
+                condition: service_healthy
+        restart: unless-stopped
+
+    frontend:
+        image: oven/bun:1.2.2-alpine
+        working_dir: /app
+        volumes:
+            - ./frontend:/app
+            - frontend_node_modules:/app/node_modules
+        command: sh -c "bun install && bun run dev --host 0.0.0.0"
+        ports:
+            - "5173:5173"
+        environment:
+            - VITE_SERVER_URL=http://localhost:3000
+        depends_on:
+            backend:
+                condition: service_started
+        restart: unless-stopped
+
+volumes:
+    mongodb_data:
+    backend_node_modules:
+    frontend_node_modules:

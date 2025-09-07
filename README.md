@@ -1,163 +1,85 @@
 <div align="center">
 
-# Simple-Authentication
+# Simple Authentication
 
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-![GitHub repo size](https://img.shields.io/github/repo-size/Sh1v4nk/Simple-Authentication)
-<img src="https://jwt.io/img/badge-compatible.svg" height="33" alt="JWT Token Badge" />
 
-A simple authentication system built with the MERN (MongoDB, Express.js, React, Node.js) stack. This project implements essential authentication features like user registration, signin, signout, and JWT-based authentication with cookies for session management.
+A secure authentication system with React frontend and Express.js backend, featuring JWT tokens, email verification, and password reset.
 
 </div>
 
-## Table of Contents
-
-- [Introduction](#simple-authentication)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-  - [Backend](#backend)
-  - [Frontend](#frontend)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-    - [Clone the repository](#1-clone-the-repository)
-    - [Install dependencies](#2-install-dependencies)
-      - [Backend](#backend-1)
-      - [Frontend](#frontend-1)
-    - [Set up environment variables](#3-set-up-environment-variables)
-- [Project Structure](#project-structure)
-- [Screenshots](#Screenshots)
-- [Contributing](#contributing)
-- [License](#license)
-
 ## Features
 
-- **User Registration**: Signup with email and username validations to avoid duplicates.
-- **User SignIn**: Secure signin with JWT-based authentication.
-- **Secure Cookies**: JWT tokens are stored in HTTP-only cookies for added security.
-- **SignOut**: Clear user sessions by removing cookies.
-- **Password Hashing**: Uses bcrypt for secure password storage.
-- **Validation**: Zod is used for validating user input.
-- **Frontend & Backend Separation**: Monorepo structure with separate frontend and backend directories.
-
----
+-   🔐 **Secure Authentication** - JWT tokens with HTTP-only cookies
+-   📧 **Email Verification** - Account activation via email
+-   🔑 **Password Reset** - Secure password recovery
+-   🚪 **Multi-device Logout** - Sign out from all devices
+-   🐳 **Docker Support** - Complete containerized development
+-   ⚡ **Modern Stack** - React, TypeScript, Express.js, MongoDB
 
 ## Tech Stack
 
-### Backend:
+**Backend:** Express.js, TypeScript, MongoDB, JWT, bcrypt, Nodemailer  
+**Frontend:** React, TypeScript, Tailwind CSS, Zustand, Vite  
+**Tools:** Docker, Bun, Zod validation
 
-- **Language**: TypeScript
-- **Framework**: Express.js
-- **Database**: MongoDB
-- **Authentication**: JWT (JSON Web Tokens)
-- **Tools & Libraries**:
-  - `bcrypt` for password hashing.
-  - `zod` for input validation.
-  - Nodemailer for email functionality (e.g., account activation/reset password).
+## Prerequisites
 
-### Frontend:
+-   Node.js or Bun
+-   Docker
 
-- React.js
-- Tailwind CSS
-- Zustand
+## Quick Start
 
----
-
-## Getting Started
-
-Follow these steps to get the project up and running on your local machine:
-
-### Prerequisites
-
-- Node.js
-- MongoDB
-- Bun.js
-
----
-
-### Installation
-
-#### 1. Clone the repository:
+1. Clone the repository & navigate to the project directory
 
 ```bash
-git clone https://github.com/Sh1v4nk/Simple-Authentication
-
-cd Simple-Authentication
+  git clone https://github.com/Sh1v4nk/Simple-Authentication.git
+  cd Simple-Authentication
 ```
 
-#### 2. Install dependencies:
+2. Start the application:
 
-Navigate to the respective directories and install the required dependencies:
-
-##### Backend:
+### Docker (Recommended)
 
 ```bash
-cd backend
-
-bun install
+docker compose up
 ```
 
-##### Frontend:
+Access the app at [http://localhost:5173](http://localhost:5173)
+
+### Manual Setup
 
 ```bash
-cd ../frontend
+# Backend
+cd backend && bun install && bun run dev
 
-bun install
+# Frontend (new terminal)
+cd frontend && bun install && bun run dev
 ```
 
-#### 3. Set up environment variables:
+## Project Structure
 
-Refer to the `.env.example` file in the `/backend` or `/fronted` directory for the required environment variables. Copy the file and rename it to `.env` in the respecitve folder, then populate the values as needed.
-
-Bun will automatically load these environment variables during runtime.
-
-##### References:
-
-- [Backend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/backend/.env.example)
-
-- [Frontend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/frontend/.env.example)
-
----
-
-### Project Structure
-
-The project is structured as a monorepo with the following directories:
-
-```plaintext
+```
 Simple-Authentication/
 ├── backend/
-│   ├── src/
-│   │   ├── configs/
-│   │   ├── constants/
-│   │   ├── controllers/
-│   │   ├── middlewares/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── types/
-│   │   ├── utils/
-│   │   └── validations/
-│   │   └── App.ts
-│   ├── .env.example
-│   ├── alias.js
-│
 ├── frontend/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── routes/
-│   │   ├── store/
-│   │   ├── types/
-│   │   └── utils/
-│   │   └── App.tsx
-│   │   └── main.tsx
+└── docker-compose.yml
 ```
 
----
+## Environment Variables
 
-## Screenshots
+Create `.env` files in both `backend/` and `frontend/` directories. See `.env.example` files for required variables.
+
+-   [Backend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/backend/.env.example)
+
+-   [Frontend .env.example](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/frontend/.env.example)
+
+#### Environment Variables for Docker
+
+The docker-compose.yml includes default environment variables for development.
+
+---
 
 ### Sign Up Page
 
@@ -175,19 +97,17 @@ Simple-Authentication/
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/FeatureName`)
-3. Commit your Changes (`git commit -m 'Add some FeatureName'`)
-4. Push to the Branch (`git push origin feature/FeatureName`)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/Sh1v4nk/Simple-Authentication/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -53,7 +53,7 @@ const sanitizeUserForResponse = (user: any) => ({
     emailVerificationToken: undefined,
     emailVerificationTokenExpiresAt: undefined,
     __v: undefined,
-    _id: user._id?.toString(),
+    _id: undefined,
 });
 
 /**

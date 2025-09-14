@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "@/utils/axiosConfig";
 import { AuthState, ValidationError } from "@/types";
 
 export const handleError = (

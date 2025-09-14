@@ -6,7 +6,6 @@ const LoadingSpinner = () => {
                 className="h-12 w-12 animate-spin text-white"
                 aria-label="Loading..."
             />
-            ;
         </div>
     );
 };

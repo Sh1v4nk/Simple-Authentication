@@ -27,14 +27,18 @@ axios.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Don't intercept verify-auth requests or if we're already verifying auth
-        if (originalRequest.url?.includes("/verify-auth") || isVerifyingAuth) {
+        // Don't intercept if we're already verifying auth (prevents loops)
+        if (isVerifyingAuth) {
+            console.log("🔄 Skipping interceptor - currently verifying auth");
             return Promise.reject(error);
         }
 
         // Check if error is 401 and we haven't already tried to refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
+            console.log("🔑 401 error detected, attempting token refresh");
+
             if (isRefreshing) {
+                console.log("⏳ Already refreshing, queuing request");
                 // If already refreshing, queue the request
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -51,10 +55,22 @@ axios.interceptors.response.use(
             isRefreshing = true;
 
             try {
+                console.log("🔄 Starting token refresh...");
+                // Temporarily allow refresh during verify-auth
+                isVerifyingAuth = false;
                 await axios.post("/refresh");
+                isVerifyingAuth = true; // Restore flag
+
+                console.log("✅ Token refresh successful");
                 processQueue(null, "success");
                 return axios(originalRequest);
             } catch (refreshError) {
+                console.log(
+                    "❌ Token refresh failed:",
+                    refreshError instanceof Error
+                        ? refreshError.message
+                        : refreshError,
+                );
                 processQueue(refreshError, null);
 
                 // Refresh failed, clear auth state without making additional requests
@@ -288,17 +304,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     verifyAuth: async () => {
+        console.log("🔍 Starting auth verification...");
         set({ isCheckingAuth: true, error: null });
         isVerifyingAuth = true;
 
         try {
             const response = await axios.get("/verify-auth");
+            console.log("✅ Auth verification successful");
             set({
                 user: response.data.user,
                 isAuthenticated: true,
                 isCheckingAuth: false,
             });
         } catch (error) {
+            console.log(
+                "❌ Auth verification failed:",
+                error instanceof Error ? error.message : error,
+            );
             set({
                 error: null,
                 isCheckingAuth: false,

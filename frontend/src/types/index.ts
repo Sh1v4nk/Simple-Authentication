@@ -34,7 +34,6 @@ export interface AuthState {
     passwordError: string[] | null;
     usernameError: string[] | null;
     tokenError: string[] | null;
-
     signup: (email: string, password: string, username: string) => Promise<void>;
     signin: (email: string, password: string) => Promise<void>;
     signout: () => Promise<void>;

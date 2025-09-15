@@ -19,19 +19,10 @@ const processQueue = (error: any, token: string | null = null) => {
     failedQueue = [];
 };
 
-// Create a flag to prevent interceptor interference with auth verification
-let isVerifyingAuth = false;
-
 axios.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-
-        // Don't intercept if we're already verifying auth (prevents loops)
-        if (isVerifyingAuth) {
-            console.log("🔄 Skipping interceptor - currently verifying auth");
-            return Promise.reject(error);
-        }
 
         // Check if error is 401 and we haven't already tried to refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -56,10 +47,7 @@ axios.interceptors.response.use(
 
             try {
                 console.log("🔄 Starting token refresh...");
-                // Temporarily allow refresh during verify-auth
-                isVerifyingAuth = false;
                 await axios.post("/refresh");
-                isVerifyingAuth = true; // Restore flag
 
                 console.log("✅ Token refresh successful");
                 processQueue(null, "success");
@@ -306,7 +294,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     verifyAuth: async () => {
         console.log("🔍 Starting auth verification...");
         set({ isCheckingAuth: true, error: null });
-        isVerifyingAuth = true;
 
         try {
             const response = await axios.get("/verify-auth");
@@ -327,8 +314,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                 isAuthenticated: false,
                 user: null,
             });
-        } finally {
-            isVerifyingAuth = false;
         }
     },
 }));

@@ -1,9 +1,14 @@
 import { Navigate } from "react-router-dom";
 import { RouteGuardProps } from "@/types";
 import { useAuthStore } from "@/store/authStore";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export const ProtectedRoute = ({ children }: RouteGuardProps) => {
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
+
+    if (isCheckingAuth) {
+        return <LoadingSpinner />;
+    }
 
     if (!isAuthenticated) {
         return <Navigate to="/signin" replace />;
@@ -17,7 +22,11 @@ export const ProtectedRoute = ({ children }: RouteGuardProps) => {
 };
 
 export const RedirectIfAuthenticated = ({ children }: RouteGuardProps) => {
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user, isCheckingAuth } = useAuthStore();
+
+    if (isCheckingAuth) {
+        return <LoadingSpinner />;
+    }
 
     if (isAuthenticated && user?.isVerified) {
         return <Navigate to="/" replace />;

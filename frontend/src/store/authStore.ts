@@ -27,9 +27,9 @@ axios.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Don't intercept verify-auth requests or if we're already verifying auth
-        if (originalRequest.url?.includes("/verify-auth") || isVerifyingAuth) {
-            console.log("🔄 Skipping interceptor for verify-auth request");
+        // Don't intercept if we're already verifying auth (prevents loops)
+        if (isVerifyingAuth) {
+            console.log("🔄 Skipping interceptor - currently verifying auth");
             return Promise.reject(error);
         }
 
@@ -56,26 +56,13 @@ axios.interceptors.response.use(
 
             try {
                 console.log("🔄 Starting token refresh...");
-                // Prevent refresh if we're currently verifying auth
-                if (isVerifyingAuth) {
-                    console.log("🔄 Skipping refresh during auth verification");
-                    throw new Error("Cannot refresh during auth verification");
-                }
-
                 await axios.post("/refresh");
 
                 console.log("✅ Token refresh successful");
                 processQueue(null, "success");
 
-                // Don't retry verify-auth requests after refresh - let verifyAuth handle it
-                if (!originalRequest.url?.includes("/verify-auth")) {
-                    return axios(originalRequest);
-                } else {
-                    console.log(
-                        "🔄 Skipping retry for verify-auth request after refresh",
-                    );
-                    return Promise.resolve({ data: null });
-                }
+                // Always retry the request after successful refresh
+                return axios(originalRequest);
             } catch (refreshError) {
                 console.log(
                     "❌ Token refresh failed:",
@@ -335,6 +322,14 @@ export const useAuthStore = create<AuthState>((set) => ({
                 isCheckingAuth: false,
             });
         } catch (error) {
+            // Check if this is a 401 that should trigger refresh
+            const axiosError = error as any;
+            if (axiosError?.response?.status === 401) {
+                console.log(
+                    "🔑 Access token expired during verification, refresh should happen automatically",
+                );
+            }
+
             console.log(
                 "❌ Auth verification failed:",
                 error instanceof Error ? error.message : error,

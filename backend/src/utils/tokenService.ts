@@ -97,7 +97,7 @@ export class TokenService {
             httpOnly: true,
             secure: isProduction,
             sameSite: "none",
-            maxAge: TIMING_CONSTANTS.FIFTEEN_MINUTES,
+            maxAge: 2 * 1000 * 60,
         });
 
         // Refresh token cookie - BACKEND ONLY (httpOnly: true)

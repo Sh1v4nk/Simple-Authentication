@@ -20,7 +20,7 @@ interface RefreshTokenData {
  * Token Service - Handles both access and refresh tokens
  */
 export class TokenService {
-    private static readonly ACCESS_TOKEN_EXPIRY = "2m"; // 5 minutes just for testing
+    private static readonly ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
     private static readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
     private static readonly REFRESH_TOKEN_LENGTH = 64; // bytes
 
@@ -97,7 +97,7 @@ export class TokenService {
             httpOnly: true,
             secure: isProduction,
             sameSite: "none",
-            maxAge: 2 * 1000 * 60,
+            maxAge: TIMING_CONSTANTS.FIFTEEN_MINUTES,
         });
 
         // Refresh token cookie - BACKEND ONLY (httpOnly: true)

@@ -1,5 +1,6 @@
 import express from "express";
 import helmet from "helmet";
+import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import connectDB from "@/configs/Database";
@@ -12,38 +13,22 @@ const app = express();
 // Trust proxy for accurate IP addresses behind reverse proxies
 app.set("trust proxy", 1);
 app.use(helmet());
+app.use(morgan("dev", { skip: (req) => req.method === "OPTIONS" }));
 
 const corsOptions = {
-    origin: function (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
+    origin: (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
         const isDev = process.env.NODE_ENV !== "production";
-
-        console.log(`🌐 CORS request from origin: ${origin || "no-origin"}`);
-
-        // ✅ Allow requests without origin in production (health checks, internal requests)
-        // but still validate origin when present for security
-        if (!origin) {
-            console.log(`✅ CORS allowed: no origin (internal request)`);
-            return callback(null, true);
-        }
-
-        if (isDev && origin.startsWith("http://localhost:")) {
-            console.log(`✅ CORS allowed: localhost development`);
-            return callback(null, true);
-        }
-
         const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
-        console.log(`🔍 Checking against allowed origins:`, allowedOrigins);
 
-        if (allowedOrigins.includes(origin)) {
-            console.log(`✅ CORS allowed: origin in whitelist`);
-            return callback(null, true);
-        }
+        // Allow no origin (internal requests) or dev localhost
+        if (!origin || (isDev && origin.startsWith("http://localhost:"))) return callback(null, true);
 
-        console.log(`🚫 CORS blocked origin: ${origin}`);
-        return callback(new Error("Not allowed by CORS"));
+        if (allowedOrigins.includes(origin)) return callback(null, true); // Check whitelist
+
+        callback(new Error("Not allowed by CORS"));
     },
-    credentials: true, // allow cookies/authorization headers
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // restrict allowed methods
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // restrict allowed request headers
     exposedHeaders: ["RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"], // make custom headers visible to frontend
 };
@@ -78,7 +63,6 @@ app.get("/", rootRouteRateLimit, (req, res) => {
     });
 });
 
-// Health check endpoint with specific rate limiting
 app.get("/health", healthCheckRateLimit, async (req, res) => {
     const dbHealthy = await checkDatabaseHealth();
     const status = dbHealthy ? "healthy" : "unhealthy";
@@ -99,8 +83,7 @@ async function startServer(): Promise<void> {
 
         const PORT: number = parseInt(process.env.PORT || "3000", 10);
 
-        // API routes
-        app.use("/api/auth", AuthRoute);
+        app.use("/api/auth", AuthRoute); // API routes
 
         // Error handling middleware
         app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -29,8 +29,7 @@ services:
             - JWT_SECRET=your-jwt-secret-for-dev
             - SALT_ROUNDS=10
             - CLIENT_URL=http://localhost:5173
-            - TEMP_EMAIL=your-temp@email.com # create from from ethereal.email
-            - TEMP_EMAIL_PASSWORD=your-temp-password # create from from ethereal.email
+            - MAILTRAP_API_TOKEN=your-mailtrap-api-token
         depends_on:
             mongodb:
                 condition: service_healthy

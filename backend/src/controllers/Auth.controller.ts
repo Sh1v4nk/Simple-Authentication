@@ -7,7 +7,7 @@ import {
     successfulVerificationEmail,
     resetPasswordEmail,
     passwordResetSuccessfulEmail,
-} from "@/configs/NodeMailer/SendEmail";
+} from "@/configs/Mailer/SendEmail";
 import {
     sendSuccessResponse,
     sendErrorResponse,

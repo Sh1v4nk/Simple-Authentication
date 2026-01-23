@@ -1,7 +1,28 @@
 import mongoose, { Schema, Model } from "mongoose";
-import { type IUser } from "@/types/UserInterface";
+import { IUser } from "@/types/UserInterface";
 
-const UserSchema: Schema<IUser> = new Schema(
+const RefreshTokenSchema = new Schema(
+    {
+        token: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+        expiresAt: { type: Date, required: true },
+        userAgent: String,
+        ipAddress: String,
+        isRevoked: { type: Boolean, default: false },
+    },
+    { _id: false },
+);
+
+const IPAddressSchema = new Schema(
+    {
+        ip: String,
+        lastUsed: Date,
+        userAgent: String,
+    },
+    { _id: false },
+);
+
+const UserSchema = new Schema<IUser>(
     {
         email: {
             type: String,
@@ -9,133 +30,95 @@ const UserSchema: Schema<IUser> = new Schema(
             unique: true,
             lowercase: true,
             trim: true,
-            index: true, // Index for faster email lookups
         },
-        password: {
-            type: String,
-            required: true,
-            select: false, // Don't include password in queries by default
-        },
+
         username: {
             type: String,
             required: true,
             unique: true,
+            lowercase: true,
             trim: true,
-            index: true, // Index for faster username lookups
         },
-        lastLogin: {
-            type: Date,
-            default: Date.now,
-            index: true, // Index for sorting by last login
+
+        password: {
+            type: String,
+            required: true,
+            select: false,
         },
+
         isVerified: {
             type: Boolean,
             default: false,
-            index: true, // Index for filtering verified users
         },
-        resetPasswordToken: {
-            type: String,
-            index: { sparse: true }, // Sparse index since not all users have reset tokens
-        },
-        resetPasswordTokenExpiresAt: {
+
+        lastLogin: {
             type: Date,
-            index: { sparse: true }, // Sparse index for efficient queries
+            default: Date.now,
         },
-        emailVerificationToken: {
-            type: String,
-            index: { sparse: true }, // Sparse index for verification tokens
-        },
-        emailVerificationTokenExpiresAt: {
-            type: Date,
-            index: { sparse: true }, // Sparse index for efficient queries
-        },
+
+        resetPasswordToken: String,
+        resetPasswordTokenExpiresAt: Date,
+
+        emailVerificationToken: String,
+        emailVerificationTokenExpiresAt: Date,
+
         loginAttempts: {
             type: Number,
             default: 0,
-            index: true, // Index for rate limiting queries
         },
-        lockUntil: {
-            type: Date,
-            index: { sparse: true }, // Index for account lockout functionality
+
+        lockUntil: Date,
+
+        refreshTokens: {
+            type: [RefreshTokenSchema],
+            default: [],
         },
-        ipAddresses: [
-            {
-                ip: String,
-                lastUsed: Date,
-                userAgent: String,
-            },
-        ], // Track login IPs for security
-        refreshTokens: [
-            {
-                token: {
-                    type: String,
-                    required: true,
-                },
-                createdAt: {
-                    type: Date,
-                    default: Date.now,
-                },
-                expiresAt: {
-                    type: Date,
-                    required: true,
-                },
-                userAgent: String,
-                ipAddress: String,
-                isRevoked: {
-                    type: Boolean,
-                    default: false,
-                },
-            },
-        ], // Store multiple refresh tokens for multi-device support
+
+        ipAddresses: {
+            type: [IPAddressSchema],
+            default: [],
+        },
     },
     {
         timestamps: true,
-    }
+    },
 );
 
-// Compound indexes for common query patterns
-UserSchema.index({ email: 1, isVerified: 1 }); // Login queries
-UserSchema.index({ username: 1, isVerified: 1 }); // Profile queries
-UserSchema.index({ resetPasswordToken: 1, resetPasswordTokenExpiresAt: 1 }); // Password reset
-UserSchema.index({ emailVerificationToken: 1, emailVerificationTokenExpiresAt: 1 }); // Email verification
-UserSchema.index({ createdAt: -1 }); // Recent users
-UserSchema.index({ lastLogin: -1 }); // Recent activity
-UserSchema.index({ loginAttempts: 1, lockUntil: 1 }); // Security queries
+/* INDEXES */
+UserSchema.index({ email: 1, isVerified: 1 }, { name: "email_verified_idx" });
 
-// Note: Text index for search is created separately in ensureIndexes() to avoid collation conflicts
+UserSchema.index({ resetPasswordToken: 1, resetPasswordTokenExpiresAt: 1 }, { sparse: true });
 
-// Virtual for account lock status
+UserSchema.index({ emailVerificationToken: 1, emailVerificationTokenExpiresAt: 1 }, { sparse: true });
+
+/* VIRTUALS */
 UserSchema.virtual("isLocked").get(function () {
     return !!(this.lockUntil && this.lockUntil > new Date());
 });
 
-// Pre-save middleware to handle password selection
+/* PRE-SAVE SAFETY LIMITS */
 UserSchema.pre("save", function (next) {
-    // Only hash password if it has been modified (or is new)
-    if (!this.isModified("password")) return next();
+    const MAX_REFRESH_TOKENS = 10;
+    const MAX_IPS = 20;
+
+    if (this.refreshTokens.length > MAX_REFRESH_TOKENS) {
+        this.refreshTokens = this.refreshTokens.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, MAX_REFRESH_TOKENS);
+    }
+
+    if (this.ipAddresses.length > MAX_IPS) {
+        this.ipAddresses = this.ipAddresses.sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime()).slice(0, MAX_IPS);
+    }
+
     next();
 });
 
-// Query optimization methods
-UserSchema.statics.findByEmailOptimized = function (email: string) {
-    return this.findOne({ email: email.toLowerCase() })
-        .select("+password") // Explicitly include password for authentication
-        .lean({ virtuals: true }); // Use lean queries for better performance
+/* STATIC HELPERS */
+UserSchema.statics.findForAuth = function (email: string) {
+    return this.findOne({ email: email.toLowerCase() }).select("+password");
 };
 
-UserSchema.statics.findByUsernameOptimized = function (username: string) {
-    return this.findOne({ username: username.toLowerCase() })
-        .select("-password") // Exclude password for profile queries
-        .lean({ virtuals: true });
-};
-
-UserSchema.statics.findVerifiedUsers = function (page = 1, limit = 10) {
-    return this.find({ isVerified: true })
-        .select("-password")
-        .sort({ lastLogin: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean();
+UserSchema.statics.findPublicProfile = function (username: string) {
+    return this.findOne({ username: username.toLowerCase() }).select("-password -refreshTokens -resetPasswordToken").lean();
 };
 
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

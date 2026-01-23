@@ -1,13 +1,8 @@
 import type { Request, Response } from "express";
-import { ObjectId } from "mongoose";
+import { Types } from "mongoose";
 import User from "@/models/UserModel";
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES, TIMING_CONSTANTS } from "@/constants";
-import {
-    sendVerificationToken,
-    successfulVerificationEmail,
-    resetPasswordEmail,
-    passwordResetSuccessfulEmail,
-} from "@/configs/Mailer/SendEmail";
+import { sendVerificationToken, successfulVerificationEmail, resetPasswordEmail, passwordResetSuccessfulEmail } from "@/configs/Mailer/SendEmail";
 import {
     sendSuccessResponse,
     sendErrorResponse,
@@ -18,6 +13,8 @@ import {
     generateResetPasswordToken,
     TokenService,
 } from "@/utils";
+
+type ObjectId = Types.ObjectId;
 
 /**
  * Extract client information from request with enhanced IP detection

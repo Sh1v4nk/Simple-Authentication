@@ -12,6 +12,7 @@ class SafeMemoryStore {
     private store = new Map<string, LockoutData>();
     private readonly maxSize: number;
     private readonly defaultTTL: number;
+    private cleanupInterval?: NodeJS.Timeout;
 
     constructor(maxSize = 10000, defaultTTL = 24 * 60 * 60 * 1000) {
         // 24 hours TTL
@@ -19,7 +20,8 @@ class SafeMemoryStore {
         this.defaultTTL = defaultTTL;
 
         // Cleanup every 5 minutes
-        setInterval(() => this.cleanup(), 5 * 60 * 1000);
+        this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+        this.cleanupInterval.unref(); // Don't keep process alive
     }
 
     set(key: string, value: Omit<LockoutData, "createdAt">): void {
@@ -97,6 +99,14 @@ class SafeMemoryStore {
             maxSize: this.maxSize,
             memoryUsage: `${Math.round((this.store.size / this.maxSize) * 100)}%`,
         };
+    }
+
+    destroy(): void {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = undefined;
+        }
+        this.store.clear();
     }
 }
 
@@ -233,8 +243,17 @@ export const authSecurity = (req: Request, res: Response, next: NextFunction) =>
     // Stricter CSP for auth endpoints
     res.setHeader(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self';"
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self';",
     );
 
     next();
+};
+
+/**
+ * Cleanup memory stores on shutdown
+ */
+export const cleanupSecurityStores = () => {
+    failedAttempts.destroy();
+    accountLockouts.destroy();
+    console.log("✅ Security stores cleaned up");
 };

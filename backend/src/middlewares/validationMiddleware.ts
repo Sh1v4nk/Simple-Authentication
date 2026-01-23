@@ -1,13 +1,21 @@
 import { Request, Response, NextFunction } from "express";
 import { sendErrorResponse } from "@/utils";
 import { ERROR_MESSAGES, HTTP_STATUS } from "@/constants";
-import { signUpValidationSchema, signInValidationSchema, emailCodeValidationSchema, forgotPasswordValidationSchema, resetPasswordValidationSchema} from "@/validations/authValidations";
+import {
+    signUpValidationSchema,
+    signInValidationSchema,
+    emailCodeValidationSchema,
+    forgotPasswordValidationSchema,
+    resetPasswordValidationSchema,
+} from "@/validations/authValidations";
 
 export const validateSignUp = (req: Request, res: Response, next: NextFunction): void => {
     const result = signUpValidationSchema.safeParse(req.body);
 
     if (!result.success) {
-        sendErrorResponse(res, ERROR_MESSAGES.INCORRECT_FORMAT, HTTP_STATUS.BAD_REQUEST, { errors: result.error.errors });
+        sendErrorResponse(res, ERROR_MESSAGES.INCORRECT_FORMAT, HTTP_STATUS.BAD_REQUEST, {
+            errors: result.error.errors,
+        });
         return;
     }
 

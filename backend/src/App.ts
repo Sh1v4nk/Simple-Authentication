@@ -3,10 +3,11 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import mongoose from "mongoose";
 import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
-import { ensureIndexes, checkDatabaseHealth } from "@/utils";
-import { generalRateLimit, routeScanningProtection, rootRouteRateLimit, healthCheckRateLimit } from "@/middlewares";
+import { ensureIndexes, checkDatabaseHealth, runTokenCleanup } from "@/utils";
+import { generalRateLimit, routeScanningProtection, rootRouteRateLimit, healthCheckRateLimit, cleanupSecurityStores } from "@/middlewares";
 
 const app = express();
 
@@ -48,18 +49,6 @@ app.get("/", rootRouteRateLimit, (req, res) => {
         success: true,
         message: "Simple Authentication API",
         version: "1.0.0",
-        endpoints: {
-            auth: "/api/auth",
-            health: "/health",
-        },
-        authEndpoints: {
-            signup: "POST /api/auth/signup",
-            signin: "POST /api/auth/signin",
-            signout: "POST /api/auth/signout",
-            verify: "GET /api/auth/verify",
-            forgotPassword: "POST /api/auth/forgot-password",
-            resetPassword: "POST /api/auth/reset-password",
-        },
     });
 });
 
@@ -76,10 +65,18 @@ app.get("/health", healthCheckRateLimit, async (req, res) => {
     });
 });
 
+let isShuttingDown = false;
+
 async function startServer(): Promise<void> {
     try {
         await connectDB();
         await ensureIndexes();
+
+        try {
+            await runTokenCleanup();
+        } catch (error) {
+            console.error("Startup token cleanup failed:", error);
+        }
 
         const PORT: number = parseInt(process.env.PORT || "3000", 10);
 
@@ -111,13 +108,43 @@ async function startServer(): Promise<void> {
         });
 
         app.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
-            console.log(`🔒 Basic security headers enabled (Helmet)`);
-            console.log(`📊 Rate limiting active`);
-            console.log(`🗄️  Database optimization enabled`);
+            console.log(`Server running on port ${PORT}`);
+        });
+
+        // Graceful shutdown
+        const gracefulShutdown = async (signal: string) => {
+            if (isShuttingDown) return;
+            isShuttingDown = true;
+
+            console.log(`Received ${signal}, shutting down...`);
+
+            // Cleanup security stores
+            cleanupSecurityStores();
+
+            try {
+                await mongoose.connection.close(false);
+            } catch (error) {
+                console.error("Database close failed:", error);
+            }
+
+            process.exit(0);
+        };
+
+        process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+        process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+        // Handle uncaught exceptions and unhandled rejections
+        process.on("uncaughtException", (error) => {
+            console.error("💥 Uncaught Exception:", error);
+            gracefulShutdown("UNCAUGHT_EXCEPTION");
+        });
+
+        process.on("unhandledRejection", (reason) => {
+            console.error("💥 Unhandled Rejection:", reason);
+            gracefulShutdown("UNHANDLED_REJECTION");
         });
     } catch (error) {
-        console.error("❌ Failed to start the server:", error);
+        console.error("Failed to start server:", error);
         process.exit(1);
     }
 }

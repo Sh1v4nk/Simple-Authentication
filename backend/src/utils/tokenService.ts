@@ -1,111 +1,39 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { Response } from "express";
-import mongoose, { ObjectId } from "mongoose";
+import { Request, Response } from "express";
+import { Types } from "mongoose";
 import User from "@/models/UserModel";
 import { TIMING_CONSTANTS } from "@/constants";
 
+type ObjectId = Types.ObjectId;
+
 interface TokenPayload {
     userId: ObjectId;
-    type: "access" | "refresh";
-}
-
-interface RefreshTokenData {
-    token: string;
-    hashedToken: string;
-    expiresAt: Date;
+    type: "access";
 }
 
 /**
- * Token Service - Handles both access and refresh tokens
+ * Token Service - Handles JWT access tokens and refresh tokens with rotation
  */
 export class TokenService {
-    private static readonly ACCESS_TOKEN_EXPIRY = "15m"; // 15 minutes
-    private static readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
-    private static readonly REFRESH_TOKEN_LENGTH = 64; // bytes
+    private static readonly ACCESS_EXPIRY = "15m";
+    private static readonly REFRESH_BYTES = 64;
+    private static readonly MAX_REFRESH_TOKENS = 10;
+
+    /* =========================
+       ACCESS TOKEN
+    ========================= */
 
     /**
-     * Generate access token
+     * Generate JWT access token
      */
     static generateAccessToken(userId: ObjectId): string {
         if (!process.env.JWT_SECRET) {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }
 
-        return jwt.sign({ userId, type: "access" } as TokenPayload, process.env.JWT_SECRET, { expiresIn: this.ACCESS_TOKEN_EXPIRY });
-    }
-
-    /**
-     * Generate refresh token
-     */
-    static generateRefreshToken(): RefreshTokenData {
-        const token = crypto.randomBytes(this.REFRESH_TOKEN_LENGTH).toString("hex");
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-        const expiresAt = new Date(Date.now() + TIMING_CONSTANTS.SEVEN_DAYS);
-
-        return {
-            token,
-            hashedToken,
-            expiresAt,
-        };
-    }
-
-    /**
-     * Generate both tokens and set cookies
-     */
-    static async generateTokensAndSetCookies(
-        res: Response,
-        userId: ObjectId,
-        userAgent?: string,
-        ipAddress?: string
-    ): Promise<{ accessToken: string; refreshToken: string }> {
-        const accessToken = this.generateAccessToken(userId);
-        const refreshTokenData = this.generateRefreshToken();
-
-        // Store refresh token in database
-        await User.findByIdAndUpdate(userId, {
-            $push: {
-                refreshTokens: {
-                    token: refreshTokenData.hashedToken,
-                    createdAt: new Date(),
-                    expiresAt: refreshTokenData.expiresAt,
-                    userAgent,
-                    ipAddress,
-                    isRevoked: false,
-                },
-            },
-        });
-
-        // Set cookies
-        this.setTokenCookies(res, accessToken, refreshTokenData.token);
-
-        return {
-            accessToken,
-            refreshToken: refreshTokenData.token,
-        };
-    }
-
-    /**
-     * Set token cookies with appropriate security settings
-     * FIXED: Access token is NOT httpOnly so frontend can read it
-     */
-    static setTokenCookies(res: Response, accessToken: string, refreshToken: string): void {
-        const isProduction = process.env.NODE_ENV === "production";
-
-        // Access token cookie - FRONTEND CAN READ THIS
-        res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: "none",
-            maxAge: TIMING_CONSTANTS.FIFTEEN_MINUTES,
-        });
-
-        // Refresh token cookie - BACKEND ONLY (httpOnly: true)
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: "none",
-            maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
+        return jwt.sign({ userId, type: "access" } as TokenPayload, process.env.JWT_SECRET, {
+            expiresIn: this.ACCESS_EXPIRY,
         });
     }
 
@@ -125,78 +53,139 @@ export class TokenService {
             }
 
             return decoded;
-        } catch (error) {
+        } catch {
             return null;
         }
     }
 
+    /* =========================
+       REFRESH TOKEN
+    ========================= */
+
     /**
-     * Verify and use refresh token
+     * Generate cryptographically secure refresh token
+     */
+    private static generateRefreshToken() {
+        const raw = crypto.randomBytes(this.REFRESH_BYTES).toString("hex");
+        const hash = crypto.createHash("sha256").update(raw).digest("hex");
+
+        return {
+            raw,
+            hash,
+            expiresAt: new Date(Date.now() + TIMING_CONSTANTS.SEVEN_DAYS),
+        };
+    }
+
+    /* =========================
+       ISSUE TOKENS
+    ========================= */
+
+    /**
+     * Issue new access and refresh tokens for a user
+     * Automatically manages token rotation and cleanup
+     */
+    static async generateTokensAndSetCookies(
+        res: Response,
+        userId: ObjectId,
+        userAgent?: string,
+        ipAddress?: string,
+    ): Promise<{ accessToken: string; refreshToken: string }> {
+        const user = await User.findById(userId).select("refreshTokens");
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        const now = new Date();
+
+        // Remove expired tokens
+        user.refreshTokens = user.refreshTokens.filter((t) => !t.isRevoked && t.expiresAt > now);
+
+        // Enforce token limit
+        if (user.refreshTokens.length >= this.MAX_REFRESH_TOKENS) {
+            user.refreshTokens.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+            user.refreshTokens.shift(); // Remove oldest
+        }
+
+        const refresh = this.generateRefreshToken();
+
+        user.refreshTokens.push({
+            token: refresh.hash,
+            createdAt: now,
+            expiresAt: refresh.expiresAt,
+            userAgent,
+            ipAddress,
+            isRevoked: false,
+        });
+
+        await user.save();
+
+        const accessToken = this.generateAccessToken(userId);
+        this.setTokenCookies(res, accessToken, refresh.raw);
+
+        return { accessToken, refreshToken: refresh.raw };
+    }
+
+    /**
+     * Rotate refresh token (used during token refresh)
      */
     static async verifyAndConsumeRefreshToken(
         refreshToken: string,
         userAgent?: string,
-        ipAddress?: string
-    ): Promise<{ userId: ObjectId; newAccessToken: string; newRefreshToken: string } | null> {
+        ipAddress?: string,
+    ): Promise<{
+        userId: ObjectId;
+        newAccessToken: string;
+        newRefreshToken: string;
+    } | null> {
         try {
-            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+            const hash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 
-            // Find user with this refresh token
             const user = await User.findOne({
-                "refreshTokens.token": hashedToken,
+                "refreshTokens.token": hash,
                 "refreshTokens.isRevoked": false,
                 "refreshTokens.expiresAt": { $gt: new Date() },
             });
 
-            if (!user) {
-                return null;
-            }
+            if (!user) return null;
 
-            // Find the specific token
-            const tokenIndex = user.refreshTokens.findIndex((rt) => rt.token === hashedToken && !rt.isRevoked && rt.expiresAt > new Date());
+            const token = user.refreshTokens.find((t) => t.token === hash && !t.isRevoked && t.expiresAt > new Date());
 
-            if (tokenIndex === -1) {
-                return null;
-            }
+            if (!token) return null;
 
-            // Revoke the used refresh token
-            user.refreshTokens[tokenIndex].isRevoked = true;
+            // Revoke used token
+            token.isRevoked = true;
 
             // Generate new tokens
-            const newAccessToken = this.generateAccessToken(user._id as ObjectId);
-            const newRefreshTokenData = this.generateRefreshToken();
+            const fresh = this.generateRefreshToken();
 
-            // Add new refresh token
             user.refreshTokens.push({
-                token: newRefreshTokenData.hashedToken,
+                token: fresh.hash,
                 createdAt: new Date(),
-                expiresAt: newRefreshTokenData.expiresAt,
+                expiresAt: fresh.expiresAt,
                 userAgent,
                 ipAddress,
                 isRevoked: false,
             });
 
-            // Clean up expired and revoked tokens (keep last 5 active tokens)
+            // Keep only recent active tokens (5) and recent revoked tokens (10) for audit
             const activeTokens = user.refreshTokens
-                .filter((rt) => !rt.isRevoked && rt.expiresAt > new Date())
+                .filter((t) => !t.isRevoked && t.expiresAt > new Date())
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
                 .slice(0, 5);
 
-            user.refreshTokens = [
-                ...activeTokens,
-                // Keep revoked tokens for audit trail but limit them
-                ...user.refreshTokens
-                    .filter((rt) => rt.isRevoked)
-                    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-                    .slice(0, 10),
-            ];
+            const revokedTokens = user.refreshTokens
+                .filter((t) => t.isRevoked)
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+                .slice(0, 10);
+
+            user.refreshTokens = [...activeTokens, ...revokedTokens];
 
             await user.save();
 
             return {
                 userId: user._id as ObjectId,
-                newAccessToken,
-                newRefreshToken: newRefreshTokenData.token,
+                newAccessToken: this.generateAccessToken(user._id as ObjectId),
+                newRefreshToken: fresh.raw,
             };
         } catch (error) {
             console.error("Refresh token verification error:", error);
@@ -204,13 +193,17 @@ export class TokenService {
         }
     }
 
+    /* =========================
+       TOKEN REVOCATION
+    ========================= */
+
     /**
-     * Revoke refresh token (logout)
+     * Revoke single refresh token (logout)
      */
     static async revokeRefreshToken(refreshToken: string): Promise<boolean> {
         try {
-            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
-            const result = await User.updateOne({ "refreshTokens.token": hashedToken }, { $set: { "refreshTokens.$.isRevoked": true } });
+            const hash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+            const result = await User.updateOne({ "refreshTokens.token": hash }, { $set: { "refreshTokens.$.isRevoked": true } });
             return result.modifiedCount > 0;
         } catch (error) {
             console.error("Token revocation error:", error);
@@ -231,55 +224,79 @@ export class TokenService {
         }
     }
 
+    /* =========================
+       COOKIES
+    ========================= */
+
     /**
-     * Clear cookies
+     * Set HTTP-only cookies for both tokens
+     */
+    static setTokenCookies(res: Response, access: string, refresh: string): void {
+        const isProd = process.env.NODE_ENV === "production";
+        const sameSite = isProd ? "none" : "lax";
+
+        res.cookie("accessToken", access, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite,
+            maxAge: TIMING_CONSTANTS.FIFTEEN_MINUTES,
+        });
+
+        res.cookie("refreshToken", refresh, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite,
+            maxAge: TIMING_CONSTANTS.SEVEN_DAYS,
+        });
+    }
+
+    /**
+     * Clear both token cookies
      */
     static clearTokenCookies(res: Response): void {
-        const isProduction = process.env.NODE_ENV === "production";
+        const isProd = process.env.NODE_ENV === "production";
 
         res.clearCookie("accessToken", {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: "none",
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
         });
 
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: "none",
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
         });
     }
 
+    /* =========================
+       REQUEST HELPERS
+    ========================= */
+
     /**
-     * Extract token from request (cookie or header)
+     * Extract access token from cookie or Authorization header
      */
-    static extractAccessToken(req: any): string | null {
-        // Try cookie first
-        let token = req.cookies?.accessToken;
-
-        // Fallback to Authorization header
-        if (!token) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
-        }
-
-        return token || null;
+    static extractAccessToken(req: Request): string | null {
+        return req.cookies?.accessToken || req.headers.authorization?.replace("Bearer ", "") || null;
     }
 
     /**
-     * Check if refresh token is still valid (not revoked)
+     * Extract refresh token from cookie
+     */
+    static extractRefreshToken(req: Request): string | null {
+        return req.cookies?.refreshToken || null;
+    }
+
+    /**
+     * Check if refresh token is still valid (not revoked, not expired)
      */
     static async isRefreshTokenValid(refreshToken: string, userId: ObjectId): Promise<boolean> {
         try {
-            // Hash the token to match stored format
-            const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+            const hash = crypto.createHash("sha256").update(refreshToken).digest("hex");
 
-            // Find user with this refresh token that is not revoked and not expired
             const user = await User.findOne({
                 _id: userId,
-                "refreshTokens.token": hashedToken,
+                "refreshTokens.token": hash,
                 "refreshTokens.isRevoked": false,
                 "refreshTokens.expiresAt": { $gt: new Date() },
             });
@@ -291,62 +308,74 @@ export class TokenService {
         }
     }
 
-    /**
-     * Extract refresh token from request
-     */
-    static extractRefreshToken(req: any): string | null {
-        return req.cookies?.refreshToken || null;
-    }
+    /* =========================
+       MAINTENANCE
+    ========================= */
 
     /**
      * Cleanup expired and revoked refresh tokens from all users
-     * This method should be called periodically to maintain database performance
+     * CRITICAL: Prevents memory leaks in production
+     * Called automatically on server startup and periodically
      */
-    static async cleanupExpiredTokens(): Promise<{ deletedCount: number; usersProcessed: number }> {
+    static async cleanupExpiredTokens(): Promise<{
+        deletedCount: number;
+        usersProcessed: number;
+    }> {
         try {
             const now = new Date();
             let totalDeletedCount = 0;
             let usersProcessed = 0;
+            const bulkOps: any[] = [];
 
-            // Find all users with refresh tokens
-            const users = await User.find({ "refreshTokens.0": { $exists: true } }, { refreshTokens: 1 });
+            // Process in batches to avoid memory issues
+            const BATCH_SIZE = 100;
+            let skip = 0;
 
-            for (const user of users) {
-                const originalTokenCount = user.refreshTokens.length;
+            while (true) {
+                const users = await User.find({ "refreshTokens.0": { $exists: true } }, { refreshTokens: 1 })
+                    .skip(skip)
+                    .limit(BATCH_SIZE);
 
-                // Keep only non-expired, non-revoked tokens and recent revoked tokens (for audit)
-                user.refreshTokens = user.refreshTokens.filter((token) => {
-                    // Keep active tokens that haven't expired
-                    if (!token.isRevoked && token.expiresAt > now) {
-                        return true;
+                if (users.length === 0) break;
+
+                for (const user of users) {
+                    const original = user.refreshTokens.length;
+
+                    // Keep active tokens and recent revoked tokens (24h) for audit
+                    const filtered = user.refreshTokens.filter((t) => {
+                        if (!t.isRevoked && t.expiresAt > now) return true;
+
+                        if (t.isRevoked) {
+                            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                            return t.createdAt > oneDayAgo;
+                        }
+
+                        return false;
+                    });
+
+                    if (original > filtered.length) {
+                        bulkOps.push({
+                            updateOne: {
+                                filter: { _id: user._id },
+                                update: { $set: { refreshTokens: filtered } },
+                            },
+                        });
+                        totalDeletedCount += original - filtered.length;
                     }
 
-                    // Keep recently revoked tokens (last 7 days) for audit purposes
-                    if (token.isRevoked) {
-                        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                        return token.createdAt > sevenDaysAgo;
-                    }
-
-                    // Remove expired tokens
-                    return false;
-                });
-
-                const deletedTokensForUser = originalTokenCount - user.refreshTokens.length;
-
-                if (deletedTokensForUser > 0) {
-                    await user.save();
-                    totalDeletedCount += deletedTokensForUser;
+                    usersProcessed++;
                 }
 
-                usersProcessed++;
+                skip += BATCH_SIZE;
+            }
+
+            if (bulkOps.length > 0) {
+                await User.bulkWrite(bulkOps);
             }
 
             console.log(`✅ Token cleanup completed: ${totalDeletedCount} expired tokens removed from ${usersProcessed} users`);
 
-            return {
-                deletedCount: totalDeletedCount,
-                usersProcessed,
-            };
+            return { deletedCount: totalDeletedCount, usersProcessed };
         } catch (error) {
             console.error("❌ Token cleanup failed:", error);
             throw error;

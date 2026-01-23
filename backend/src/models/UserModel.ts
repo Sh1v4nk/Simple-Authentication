@@ -101,6 +101,10 @@ UserSchema.pre("save", function (next) {
     const MAX_REFRESH_TOKENS = 10;
     const MAX_IPS = 20;
 
+    // Initialize arrays if undefined (safety check)
+    if (!this.refreshTokens) this.refreshTokens = [];
+    if (!this.ipAddresses) this.ipAddresses = [];
+
     if (this.refreshTokens.length > MAX_REFRESH_TOKENS) {
         this.refreshTokens = this.refreshTokens.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, MAX_REFRESH_TOKENS);
     }

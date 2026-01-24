@@ -13,6 +13,7 @@ class SafeMemoryStore {
     private readonly maxSize: number;
     private readonly defaultTTL: number;
     private cleanupInterval?: NodeJS.Timeout;
+    private isDestroyed = false;
 
     constructor(maxSize = 10000, defaultTTL = 24 * 60 * 60 * 1000) {
         // 24 hours TTL
@@ -20,7 +21,14 @@ class SafeMemoryStore {
         this.defaultTTL = defaultTTL;
 
         // Cleanup every 5 minutes
-        this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+        this.cleanupInterval = setInterval(
+            () => {
+                if (!this.isDestroyed) {
+                    this.cleanup();
+                }
+            },
+            5 * 60 * 1000,
+        );
         this.cleanupInterval.unref(); // Don't keep process alive
     }
 
@@ -102,6 +110,7 @@ class SafeMemoryStore {
     }
 
     destroy(): void {
+        this.isDestroyed = true;
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = undefined;
@@ -110,8 +119,21 @@ class SafeMemoryStore {
     }
 }
 
-const failedAttempts = new SafeMemoryStore(5000, 60 * 60 * 1000); // 5K entries, 1 hour TTL
-const accountLockouts = new SafeMemoryStore(10000, 24 * 60 * 60 * 1000); // 10K entries, 24 hour TTL
+// Singleton instances to prevent multiple interval creation
+let failedAttempts: SafeMemoryStore;
+let accountLockouts: SafeMemoryStore;
+
+const initializeSecurityStores = () => {
+    if (!failedAttempts) {
+        failedAttempts = new SafeMemoryStore(5000, 60 * 60 * 1000); // 5K entries, 1 hour TTL
+    }
+    if (!accountLockouts) {
+        accountLockouts = new SafeMemoryStore(10000, 24 * 60 * 60 * 1000); // 10K entries, 24 hour TTL
+    }
+};
+
+// Initialize stores immediately
+initializeSecurityStores();
 
 /**
  * Basic honeypot middleware to catch bots
@@ -253,7 +275,21 @@ export const authSecurity = (req: Request, res: Response, next: NextFunction) =>
  * Cleanup memory stores on shutdown
  */
 export const cleanupSecurityStores = () => {
-    failedAttempts.destroy();
-    accountLockouts.destroy();
+    if (failedAttempts) {
+        failedAttempts.destroy();
+    }
+    if (accountLockouts) {
+        accountLockouts.destroy();
+    }
     console.log("✅ Security stores cleaned up");
+};
+
+/**
+ * Get security store statistics for monitoring
+ */
+export const getSecurityStoreStats = () => {
+    return {
+        failedAttempts: failedAttempts?.getStats(),
+        accountLockouts: accountLockouts?.getStats(),
+    };
 };

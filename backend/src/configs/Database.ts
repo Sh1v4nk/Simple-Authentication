@@ -12,7 +12,14 @@ async function connectDB(): Promise<void> {
         await mongoose.connect(mongoUri, {
             maxPoolSize: 5,
             minPoolSize: 1,
+            socketTimeoutMS: 45000,
+            serverSelectionTimeoutMS: 5000,
+            family: 4, // Use IPv4, skip IPv6 to avoid unnecessary overhead
         });
+
+        // Disable Mongoose caching to prevent memory leaks
+        mongoose.set("autoIndex", false); // Don't build indexes on every model compilation
+
         console.log("🥳 Connected to MongoDB successfully");
     } catch (error: unknown) {
         if (error instanceof Error) {

@@ -1,10 +1,8 @@
 import mongoose from "mongoose";
 import { TokenService } from "./tokenService";
 
-/**
- * Token cleanup maintenance script
- * Should be run periodically (e.g., daily via cron job)
- */
+// Token cleanup maintenance script
+
 export const runTokenCleanup = async (): Promise<{
     deletedCount: number;
     usersProcessed: number;
@@ -13,7 +11,16 @@ export const runTokenCleanup = async (): Promise<{
 
     try {
         const result = await TokenService.cleanupExpiredTokens();
-        console.log("✅ Token cleanup completed successfully");
+
+        // Trigger garbage collection after cleanup if available
+        if (global.gc) {
+            const before = process.memoryUsage().heapUsed;
+            global.gc();
+            const after = process.memoryUsage().heapUsed;
+            const freed = Math.round((before - after) / 1024 / 1024);
+            console.log(`🗑️ Garbage collection freed ${freed}MB`);
+        }
+
         return result;
     } catch (error) {
         console.error("❌ Token cleanup failed:", error);

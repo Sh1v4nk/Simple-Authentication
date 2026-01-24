@@ -57,11 +57,20 @@ app.get("/health", healthCheckRateLimit, async (req, res) => {
     const status = dbHealthy ? "healthy" : "unhealthy";
     const statusCode = dbHealthy ? 200 : 503;
 
+    // Get memory usage
+    const memUsage = process.memoryUsage();
+
     res.status(statusCode).json({
         status,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         database: dbHealthy ? "connected" : "disconnected",
+        memory: {
+            rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+            heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+            heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+            external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+        },
     });
 });
 

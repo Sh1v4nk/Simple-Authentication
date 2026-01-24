@@ -139,6 +139,13 @@ async function startServer(): Promise<void> {
             process.exit(0);
         };
 
+        // Remove any existing listeners to prevent accumulation on hot reload
+        process.removeAllListeners("SIGTERM");
+        process.removeAllListeners("SIGINT");
+        process.removeAllListeners("uncaughtException");
+        process.removeAllListeners("unhandledRejection");
+
+        // Add new listeners
         process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
         process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 

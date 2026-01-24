@@ -18,6 +18,9 @@ export const generalRateLimit = rateLimit({
     },
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    // Memory store auto-cleans after windowMs
+    skipFailedRequests: false,
+    skipSuccessfulRequests: false,
     handler: (req: Request, res: Response) => {
         const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
         const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
@@ -303,34 +306,18 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
  * Request logging middleware for security monitoring
  */
 export const securityLogger = (req: Request, res: Response, next: NextFunction) => {
-    const startTime = Date.now();
     const clientIP = req.ip || req.socket?.remoteAddress || "unknown";
     const userAgent = req.get("User-Agent");
     const method = req.method;
     const url = req.originalUrl;
 
-    // Log the request
-    console.log(`🔒 [${new Date().toISOString()}] ${method} ${url} - IP: ${clientIP} - UA: ${userAgent}`);
+    // Log only critical security events (Morgan already does that)
+    const isAuthEndpoint = url.includes("/api/auth");
+    const isSuspicious = req.rateLimit && req.rateLimit.remaining <= 2;
 
-    // Override res.end to log response
-    const originalEnd = res.end.bind(res);
-    res.end = function (chunk?: any, encoding?: any): Response {
-        const duration = Date.now() - startTime;
-        const statusCode = res.statusCode;
-
-        console.log(`📊 [${new Date().toISOString()}] ${method} ${url} - ${statusCode} - ${duration}ms - IP: ${clientIP}`);
-
-        // Log suspicious activity
-        if (statusCode === 429) {
-            console.warn(`🚨 Rate limit exceeded: ${method} ${url} - IP: ${clientIP}`);
-        } else if (statusCode >= 400 && statusCode < 500) {
-            console.warn(`⚠️  Client error: ${method} ${url} - ${statusCode} - IP: ${clientIP}`);
-        } else if (statusCode >= 500) {
-            console.error(`❌ Server error: ${method} ${url} - ${statusCode} - IP: ${clientIP}`);
-        }
-
-        return originalEnd(chunk, encoding);
-    };
+    if (isAuthEndpoint || isSuspicious) {
+        console.log(`🔒 ${method} ${url} - IP: ${clientIP}`);
+    }
 
     next();
 };

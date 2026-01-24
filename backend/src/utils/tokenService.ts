@@ -334,7 +334,8 @@ export class TokenService {
             while (true) {
                 const users = await User.find({ "refreshTokens.0": { $exists: true } }, { refreshTokens: 1 })
                     .skip(skip)
-                    .limit(BATCH_SIZE);
+                    .limit(BATCH_SIZE)
+                    .lean();
 
                 if (users.length === 0) break;
 

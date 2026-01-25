@@ -1,6 +1,5 @@
 import express from "express";
 import helmet from "helmet";
-import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -14,7 +13,6 @@ const app = express();
 // Trust proxy for accurate IP addresses behind reverse proxies
 app.set("trust proxy", 1);
 app.use(helmet());
-app.use(morgan("dev", { skip: (req) => req.method === "OPTIONS" }));
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
@@ -40,8 +38,8 @@ app.use(cors(corsOptions));
 app.use(generalRateLimit);
 
 // Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser());
 
 app.get("/", rootRouteRateLimit, (req, res) => {
@@ -112,13 +110,16 @@ async function startServer(): Promise<void> {
             res.status(404).json({
                 success: false,
                 message: "Route not found",
-                hint: "Check API documentation for available endpoints",
             });
         });
 
-        app.listen(PORT, () => {
+        const server = app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
+
+        server.keepAliveTimeout = 65000;
+        server.headersTimeout = 66000;
+        server.maxHeadersCount = 100;
 
         // Graceful shutdown
         const gracefulShutdown = async (signal: string) => {

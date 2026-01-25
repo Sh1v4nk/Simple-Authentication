@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 async function connectDB(): Promise<void> {
     try {
-        // Disable command buffering for fail-fast behavior in production
         mongoose.set("strictQuery", true);
         mongoose.set("bufferCommands", false);
         mongoose.set("bufferTimeoutMS", 0);
@@ -10,15 +9,20 @@ async function connectDB(): Promise<void> {
         const mongoUri: string = process.env.MONGO_URI || "mongodb://localhost:27017/Auth-Project";
 
         await mongoose.connect(mongoUri, {
-            maxPoolSize: 5,
+            maxPoolSize: 2,
             minPoolSize: 1,
-            socketTimeoutMS: 45000,
+            socketTimeoutMS: 30000,
             serverSelectionTimeoutMS: 5000,
-            family: 4, // Use IPv4, skip IPv6 to avoid unnecessary overhead
+            family: 4, // Use IPv4
+            maxIdleTimeMS: 10000, // Close idle connections after 10s
+            waitQueueTimeoutMS: 5000, // Fail fast if pool is exhausted
         });
 
-        // Disable Mongoose caching to prevent memory leaks
         mongoose.set("autoIndex", false); // Don't build indexes on every model compilation
+
+        mongoose.connection.on("disconnected", () => {
+            console.log("MongoDB disconnected - cleaning up");
+        });
 
         console.log("🥳 Connected to MongoDB successfully");
     } catch (error: unknown) {

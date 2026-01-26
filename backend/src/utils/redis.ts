@@ -5,11 +5,9 @@ let redis: Redis | null = null;
 try {
     redis = Redis.fromEnv();
     console.log("✅ Redis client initialized");
-} catch {
-    if (process.env.NODE_ENV === "production") {
-        throw new Error("❌ Redis is required for rate limiting in production");
-    }
-    console.warn("⚠️ Redis not configured, rate limiting disabled (dev only)");
+} catch (error) {
+    console.error("❌ Failed to initialize Redis:", error);
+    throw new Error("❌ Redis is REQUIRED - please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN");
 }
 
 export default redis;

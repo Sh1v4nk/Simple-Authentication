@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import connectDB from "@/configs/Database";
 import AuthRoute from "@/routes/AuthRouter";
 import { ensureIndexes, checkDatabaseHealth, runTokenCleanup } from "@/utils";
-import { generalRateLimit, routeScanningProtection, rootRouteRateLimit, healthCheckRateLimit, cleanupSecurityStores } from "@/middlewares";
+import { generalRateLimit, routeScanningProtection, rootRouteRateLimit, healthCheckRateLimit } from "@/middlewares";
 
 const app = express();
 
@@ -127,9 +127,6 @@ async function startServer(): Promise<void> {
             isShuttingDown = true;
 
             console.log(`Received ${signal}, shutting down...`);
-
-            // Cleanup security stores
-            cleanupSecurityStores();
 
             try {
                 await mongoose.connection.close(false);

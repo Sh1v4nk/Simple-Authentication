@@ -6,6 +6,7 @@
     "scripts": {
         "build": "tsc && tsc-alias",
         "start": "bun dist/App.js",
+        "start:node": "node dist/App.js",
         "dev": "bun --watch --expose-gc ./src/App.ts",
         "clean": "rm -rf dist",
         "cleanup-tokens": "bun run src/utils/tokenCleanup.ts"

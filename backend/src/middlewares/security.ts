@@ -8,64 +8,13 @@ interface LockoutData {
     createdAt: number;
 }
 
-/**  Safe in-memory fallback store **/
-class SafeMemoryStore {
-    private store = new Map<string, LockoutData>();
-    private readonly maxSize: number;
-    private readonly defaultTTL: number;
-
-    constructor(maxSize = 10000, defaultTTL = 24 * 60 * 60 * 1000) {
-        this.maxSize = maxSize;
-        this.defaultTTL = defaultTTL;
-    }
-
-    get(key: string): LockoutData | null {
-        const data = this.store.get(key);
-        if (!data) return null;
-
-        if (Date.now() - data.createdAt > this.defaultTTL) {
-            this.store.delete(key);
-            return null;
-        }
-
-        if (data.lockedUntil && Date.now() > data.lockedUntil) {
-            this.store.delete(key);
-            return null;
-        }
-
-        return data;
-    }
-
-    set(key: string, value: Omit<LockoutData, "createdAt">) {
-        if (this.store.size >= this.maxSize) {
-            const iterator = this.store.keys().next();
-            if (!iterator.done) {
-                this.store.delete(iterator.value);
-            }
-        }
-
-        this.store.set(key, { ...value, createdAt: Date.now() });
-    }
-
-    delete(key: string) {
-        this.store.delete(key);
-    }
-
-    clear() {
-        this.store.clear();
-    }
+// Require Redis - no fallback
+if (!redis) {
+    throw new Error("❌ Redis is required for security features (lockout tracking)");
 }
 
-/**  Safe in-memory stores **/
-const memoryFailedAttempts = new SafeMemoryStore(5000, 60 * 60 * 1000);
-const memoryAccountLockouts = new SafeMemoryStore(10000, 24 * 60 * 60 * 1000);
-
-const useRedis = Boolean(redis);
-
-/**  Store helpers **/
+/**  Store helpers - Redis only **/
 const getLockout = async (key: string): Promise<LockoutData | null> => {
-    if (!useRedis) return memoryAccountLockouts.get(key);
-
     const data = await redis!.get<LockoutData>(`lockout:${key}`);
     if (!data) return null;
 
@@ -78,29 +27,14 @@ const getLockout = async (key: string): Promise<LockoutData | null> => {
 };
 
 const setLockout = async (key: string, data: Omit<LockoutData, "createdAt">, ttlMs: number) => {
-    if (!useRedis) {
-        memoryAccountLockouts.set(key, data);
-        return;
-    }
-
     await redis!.set(`lockout:${key}`, { ...data, createdAt: Date.now() }, { px: ttlMs });
 };
 
 const clearLockout = async (key: string) => {
-    if (!useRedis) {
-        memoryAccountLockouts.delete(key);
-        return;
-    }
     await redis!.del(`lockout:${key}`);
 };
 
 const incrementFailure = async (key: string) => {
-    if (!useRedis) {
-        const data = memoryFailedAttempts.get(key) || { count: 0, createdAt: Date.now() };
-        memoryFailedAttempts.set(key, { count: data.count + 1 });
-        return data.count + 1;
-    }
-
     const count = await redis!.incr(`fail:${key}`);
     if (count === 1) {
         await redis!.expire(`fail:${key}`, Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000));
@@ -109,10 +43,6 @@ const incrementFailure = async (key: string) => {
 };
 
 const clearFailures = async (key: string) => {
-    if (!useRedis) {
-        memoryFailedAttempts.delete(key);
-        return;
-    }
     await redis!.del(`fail:${key}`);
 };
 
@@ -181,16 +111,4 @@ export const authSecurity = (_req: Request, res: Response, next: NextFunction) =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self';",
     );
     next();
-};
-
-/**
- * Cleanup security stores on shutdown
- * (Memory only, Redis is TTL-based)
- */
-export const cleanupSecurityStores = () => {
-    if (!useRedis) {
-        memoryFailedAttempts.clear();
-        memoryAccountLockouts.clear();
-    }
-    console.log("✅ Security stores cleaned up");
 };

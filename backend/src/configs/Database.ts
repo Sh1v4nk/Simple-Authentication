@@ -9,19 +9,28 @@ async function connectDB(): Promise<void> {
         const mongoUri: string = process.env.MONGO_URI || "mongodb://localhost:27017/Auth-Project";
 
         await mongoose.connect(mongoUri, {
-            maxPoolSize: 2,
-            minPoolSize: 1,
-            socketTimeoutMS: 30000,
+            maxPoolSize: 10,
+            minPoolSize: 2,
+            socketTimeoutMS: 45000, //45s
             serverSelectionTimeoutMS: 5000,
-            family: 4, // Use IPv4
-            maxIdleTimeMS: 10000, // Close idle connections after 10s
-            waitQueueTimeoutMS: 5000, // Fail fast if pool is exhausted
+            family: 4,
+            maxIdleTimeMS: 60000, // 60s
+            waitQueueTimeoutMS: 5000,
         });
 
-        mongoose.set("autoIndex", false); // Don't build indexes on every model compilation
+        mongoose.set("autoIndex", false);
+
+        // Add connection error handler
+        mongoose.connection.on("error", (err) => {
+            console.error("MongoDB connection error:", err);
+        });
 
         mongoose.connection.on("disconnected", () => {
             console.log("MongoDB disconnected - cleaning up");
+        });
+
+        mongoose.connection.on("reconnected", () => {
+            console.log("MongoDB reconnected");
         });
 
         console.log("🥳 Connected to MongoDB successfully");

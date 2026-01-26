@@ -34,6 +34,7 @@ const UserSchema = new Schema<IUser>(
 
         username: {
             type: String,
+            lowercase: true,
             required: true,
             unique: true,
             trim: true,
@@ -61,13 +62,6 @@ const UserSchema = new Schema<IUser>(
         emailVerificationToken: String,
         emailVerificationTokenExpiresAt: Date,
 
-        loginAttempts: {
-            type: Number,
-            default: 0,
-        },
-
-        lockUntil: Date,
-
         refreshTokens: {
             type: [RefreshTokenSchema],
             default: [],
@@ -90,26 +84,19 @@ UserSchema.index({ resetPasswordToken: 1, resetPasswordTokenExpiresAt: 1 }, { sp
 
 UserSchema.index({ emailVerificationToken: 1, emailVerificationTokenExpiresAt: 1 }, { sparse: true });
 
-/* VIRTUALS */
-UserSchema.virtual("isLocked").get(function () {
-    return !!(this.lockUntil && this.lockUntil > new Date());
-});
+UserSchema.index({ "refreshTokens.token": 1 }, { sparse: true });
 
 /* PRE-SAVE SAFETY LIMITS */
 UserSchema.pre("save", function (next) {
     const MAX_REFRESH_TOKENS = 10;
     const MAX_IPS = 20;
 
-    // Initialize arrays if undefined (safety check)
-    if (!this.refreshTokens) this.refreshTokens = [];
-    if (!this.ipAddresses) this.ipAddresses = [];
-
-    if (this.refreshTokens.length > MAX_REFRESH_TOKENS) {
+    if (this.isModified("refreshTokens") && this.refreshTokens.length > MAX_REFRESH_TOKENS) {
         this.refreshTokens = this.refreshTokens.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, MAX_REFRESH_TOKENS);
     }
 
-    if (this.ipAddresses.length > MAX_IPS) {
-        this.ipAddresses = this.ipAddresses.sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime()).slice(0, MAX_IPS);
+    if (this.isModified("ipAddresses") && this.ipAddresses.length > MAX_IPS) {
+        this.ipAddresses = this.ipAddresses.sort((a, b) => (b.lastUsed?.getTime() || 0) - (a.lastUsed?.getTime() || 0)).slice(0, MAX_IPS);
     }
 
     next();

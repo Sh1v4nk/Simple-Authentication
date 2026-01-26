@@ -1,300 +1,241 @@
-import rateLimit from "express-rate-limit";
-import slowDown from "express-slow-down";
 import { Request, Response, NextFunction } from "express";
-import { TIMING_CONSTANTS } from "@/constants";
+import { Ratelimit } from "@upstash/ratelimit";
+import redis from "@/utils/redis";
+import { TIMING_CONSTANTS, RATE_LIMIT_CONFIG } from "@/constants";
 
-/**
- * Rate Limiting Configuration
- * Different rate limits for different types of operations
- */
 
-// General API rate limiting
-export const generalRateLimit = rateLimit({
-    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    message: {
-        error: "Too many requests from this IP, please try again later.",
-        retryAfter: "15 minutes",
-    },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    // Memory store auto-cleans after windowMs
-    skipFailedRequests: false,
-    skipSuccessfulRequests: false,
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Too many requests from this IP, please try again later.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Strict rate limiting for authentication endpoints
-export const authRateLimit = rateLimit({
-    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-    max: 5, // Limit each IP to 5 login attempts per windowMs
-    message: {
-        error: "Too many authentication attempts, please try again later.",
-        retryAfter: "15 minutes",
-    },
-    skipSuccessfulRequests: true, // Don't count successful requests
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Too many authentication attempts from this IP, please try again later.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Rate limiting for password reset requests
-export const passwordResetRateLimit = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 3, // Limit each IP to 3 password reset attempts per hour
-    message: {
-        error: "Too many password reset attempts, please try again later.",
-        retryAfter: "1 hour",
-    },
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 60 * 60 * 1000);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Too many password reset attempts from this IP, please try again later.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Rate limiting for email verification/resend
-export const emailVerificationRateLimit = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 3, // Limit each IP to 3 email verification attempts per 5 minutes
-    message: {
-        error: "Too many email verification attempts, please try again later.",
-        retryAfter: "5 minutes",
-    },
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 5 * 60 * 1000);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Too many email verification attempts, please try again later.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Progressive delay middleware for repeated requests
-export const progressiveDelay = slowDown({
-    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-    delayAfter: 5, // Allow 5 requests per windowMs at full speed
-    delayMs: (hits) => hits * 500, // Add 500ms delay per request after delayAfter
-    maxDelayMs: 5000, // Maximum delay of 5 seconds
-});
-
-// Strict rate limiting for route scanning/abuse detection
-export const routeScanningProtection = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 5, // Allow only 5 requests to unknown/404 routes per hour
-    message: {
-        error: "Too many requests to undefined routes. Possible scanning detected.",
-        retryAfter: "1 hour",
-    },
-    skipSuccessfulRequests: true, // Only count failed/404 requests
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 60 * 60 * 1000);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        // Log potential scanning attempt
-        console.warn(`🚨 Route scanning detected from IP: ${req.ip}, User-Agent: ${req.get("User-Agent")}, Path: ${req.originalUrl}`);
-
-        res.status(429).json({
-            success: false,
-            message: "Too many requests to undefined routes. Please check your API calls.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Root route rate limiting - restrictive since it's just API info
-export const rootRouteRateLimit = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 3, // Allow 5 requests to root route per hour
-    message: {
-        error: "Too many requests to root route, please reduce frequency.",
-        retryAfter: "1 hour",
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + 60 * 60 * 1000);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Root route rate limit exceeded. Please reduce frequency.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Health check rate limiting - restrictive to prevent abuse
-export const healthCheckRateLimit = rateLimit({
-    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-    max: 3, // Allow 3 health checks per 15 minutes
-    message: {
-        error: "Too many health check requests, please reduce frequency.",
-        retryAfter: "15 minutes",
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Health check rate limit exceeded. Please reduce frequency.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-// Rate limiting for token refresh - more permissive than auth endpoints
-export const refreshTokenRateLimit = rateLimit({
-    windowMs: TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-    max: 20, // Allow 20 refresh attempts per window (more than auth attempts)
-    message: {
-        error: "Too many token refresh attempts, please try again later.",
-        retryAfter: "15 minutes",
-    },
-    skipSuccessfulRequests: true, // Don't count successful refreshes
-    handler: (req: Request, res: Response) => {
-        const resetTime = req.rateLimit?.resetTime || new Date(Date.now() + TIMING_CONSTANTS.FIFTEEN_MINUTES);
-        const secondsUntilReset = Math.max(0, Math.round((resetTime.getTime() - Date.now()) / 1000));
-
-        res.status(429).json({
-            success: false,
-            message: "Too many token refresh attempts from this IP, please try again later.",
-            retryAfter: secondsUntilReset,
-        });
-    },
-});
-
-/**
- * Custom rate limiting based on user behavior
- */
-export const adaptiveRateLimit = (req: Request, res: Response, next: NextFunction) => {
-    // Get client IP
-    const clientIP = req.ip || req.socket?.remoteAddress || "unknown";
-
-    // Add rate limit info to request for logging
-    if (req.rateLimit) {
-        req.rateLimitInfo = {
-            limit: req.rateLimit.limit,
-            remaining: req.rateLimit.remaining,
-            reset: req.rateLimit.resetTime,
-        };
-    }
-
-    // Log suspicious activity
-    if (req.rateLimit && req.rateLimit.remaining <= 2) {
-        console.warn(`⚠️  High request frequency detected from IP: ${clientIP}, remaining: ${req.rateLimit.remaining}`);
-    }
-
-    next();
-};
-
-/**
- * IP-based security checks
- */
-export const ipSecurityCheck = (req: Request, res: Response, next: NextFunction) => {
-    const clientIP = req.ip || req.socket?.remoteAddress || "unknown";
-    const userAgent = req.get("User-Agent") || "unknown";
-
-    // Basic IP validation
-    if (!clientIP || clientIP === "unknown") {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid request origin",
-        });
-    }
-
-    // Detect potential bot traffic
-    const suspiciousUserAgents = ["bot", "crawler", "spider", "scraper", "curl", "wget"];
-
-    const isSuspicious = suspiciousUserAgents.some((agent) => userAgent.toLowerCase().includes(agent));
-
-    if (isSuspicious) {
-        console.warn(`🤖 Suspicious user agent detected: ${userAgent} from IP: ${clientIP}`);
-        return res.status(403).json({
-            success: false,
-            message: "Access denied",
-        });
-    }
-
-    // Add security headers to request for downstream use
-    req.headers["x-client-ip"] = clientIP;
-    req.headers["x-user-agent"] = userAgent;
-
-    next();
-};
-
-/**
- * Request validation middleware
- */
-export const requestValidation = (req: Request, res: Response, next: NextFunction) => {
-    // Check for required headers
-    const requiredHeaders = ["user-agent", "accept"];
-
-    for (const header of requiredHeaders) {
-        if (!req.get(header)) {
-            return res.status(400).json({
-                success: false,
-                message: `Missing required header: ${header}`,
-            });
+declare global {
+    namespace Express {
+        interface Request {
+            rateLimit?: {
+                limit: number;
+                remaining: number;
+                resetTime: Date;
+            };
+            clientIP?: string;
+            userAgent?: string;
         }
     }
+}
 
-    // Validate request size
-    const contentLength = parseInt(req.get("content-length") || "0");
-    const maxSize = 1024 * 1024; // 1MB limit
+// Helper functions
+const getClientIP = (req: Request): string => {
+    return (
+        (req.headers["cf-connecting-ip"] as string) ||
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.ip ||
+        req.socket.remoteAddress ||
+        "unknown"
+    );
+};
 
-    if (contentLength > maxSize) {
-        return res.status(413).json({
+const createLimiter = (name: string, requests: number, windowMs: number) => {
+    if (!redis) return null;
+
+    return new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(requests, `${windowMs} ms`),
+        prefix: `ratelimit:${name}`,
+        analytics: true,
+    });
+};
+
+const applyRateLimit = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    limiter: Ratelimit | null,
+    identifier: string,
+    message: string,
+) => {
+    if (!limiter) return next();
+
+    const { success, limit, remaining, reset } = await limiter.limit(identifier);
+
+    req.rateLimit = {
+        limit,
+        remaining,
+        resetTime: new Date(reset),
+    };
+
+    res.setHeader("RateLimit-Limit", limit.toString());
+    res.setHeader("RateLimit-Remaining", remaining.toString());
+    res.setHeader("RateLimit-Reset", Math.ceil(reset / 1000).toString());
+
+    if (!success) {
+        return res.status(429).json({
             success: false,
-            message: "Request too large",
+            message,
+            retryAfter: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
         });
     }
 
     next();
 };
 
-/**
- * Security headers middleware
- */
-export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-    // Remove server information
-    res.removeHeader("X-Powered-By");
+// Limiters definition
+const generalLimiter = createLimiter("general", RATE_LIMIT_CONFIG.GENERAL.requests, RATE_LIMIT_CONFIG.GENERAL.window);
+const authLimiter = createLimiter("auth", RATE_LIMIT_CONFIG.AUTH.requests, RATE_LIMIT_CONFIG.AUTH.window);
+const passwordResetLimiter = createLimiter(
+    "password-reset",
+    RATE_LIMIT_CONFIG.PASSWORD_RESET.requests,
+    RATE_LIMIT_CONFIG.PASSWORD_RESET.window,
+);
+const emailVerificationLimiter = createLimiter(
+    "email-verify",
+    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.requests,
+    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.window,
+);
+const refreshTokenLimiter = createLimiter(
+    "refresh-token",
+    RATE_LIMIT_CONFIG.REFRESH_TOKEN.requests,
+    RATE_LIMIT_CONFIG.REFRESH_TOKEN.window,
+);
+const rootLimiter = createLimiter("root", RATE_LIMIT_CONFIG.ROOT.requests, RATE_LIMIT_CONFIG.ROOT.window);
+const healthLimiter = createLimiter("health", RATE_LIMIT_CONFIG.HEALTH_CHECK.requests, RATE_LIMIT_CONFIG.HEALTH_CHECK.window);
+const scanLimiter = createLimiter("scan", RATE_LIMIT_CONFIG.ROUTE_SCANNING.requests, RATE_LIMIT_CONFIG.ROUTE_SCANNING.window);
 
-    // Add security headers
+// Rate limiting middleware
+export const generalRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+    req.clientIP = ip;
+    await applyRateLimit(req, res, next, generalLimiter, ip, "Too many requests");
+};
+
+export const authRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+    const email = String(req.body?.email || "unknown").toLowerCase();
+    req.clientIP = ip;
+
+    await applyRateLimit(req, res, next, authLimiter, `auth:${ip}:${email}`, "Too many authentication attempts");
+};
+
+export const passwordResetRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+    const email = req.body?.email ?? "unknown";
+
+    await applyRateLimit(req, res, next, passwordResetLimiter, `reset:${ip}:${email}`, "Too many password reset attempts");
+};
+
+export const emailVerificationRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+
+    await applyRateLimit(req, res, next, emailVerificationLimiter, ip, "Too many email verification attempts");
+};
+
+export const refreshTokenRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+
+    await applyRateLimit(req, res, next, refreshTokenLimiter, ip, "Too many refresh token requests");
+};
+
+export const rootRouteRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+
+    await applyRateLimit(req, res, next, rootLimiter, ip, "Root route rate limit exceeded");
+};
+
+export const healthCheckRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+
+    await applyRateLimit(req, res, next, healthLimiter, ip, "Health check rate limit exceeded");
+};
+
+export const routeScanningProtection = async (req: Request, res: Response, next: NextFunction) => {
+    if (!scanLimiter) return next();
+
+    const ip = getClientIP(req);
+    const { success, reset } = await scanLimiter.limit(ip);
+
+    if (!success) {
+        // Throttle logs: only first N warnings per IP per hour
+        if (redis) {
+            const logKey = `scan-log:${ip}`;
+            const logCount = await redis.incr(logKey);
+            if (logCount === 1) await redis.expire(logKey, 3600); // 1 hour
+
+            if (logCount <= RATE_LIMIT_CONFIG.SCAN_LOG_LIMIT) {
+                console.warn(`🚨 Route scan detected | IP=${ip} | PATH=${req.originalUrl}`);
+            }
+        }
+
+        return res.status(429).json({
+            success: false,
+            message: "Too many invalid route requests",
+            retryAfter: Math.ceil((reset - Date.now()) / 1000),
+        });
+    }
+
+    next();
+};
+
+// Progressively delays
+export const progressiveDelay = async (req: Request, _res: Response, next: NextFunction) => {
+    if (!redis) return next();
+
+    const ip = getClientIP(req);
+    const key = `delay:${ip}`;
+    const windowSeconds = Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000);
+
+    try {
+        const hits = await redis.incr(key);
+        if (hits === 1) await redis.expire(key, windowSeconds);
+
+        if (hits > RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) {
+            const delay = Math.min(
+                (hits - RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) * RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.delayMs,
+                RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.maxDelayMs,
+            );
+            await new Promise((r) => setTimeout(r, delay));
+        }
+    } catch (error) {
+        console.error("Progressive delay error:", error);
+    }
+
+    next();
+};
+
+// IP and User-Agent extraction and bot detection
+export const ipSecurityCheck = (req: Request, res: Response, next: NextFunction) => {
+    const ip = getClientIP(req);
+    const ua = (req.get("user-agent") || "").toLowerCase();
+
+    req.clientIP = ip;
+    req.userAgent = ua;
+
+    const malicious = ["sqlmap", "nmap", "nikto", "masscan", "acunetix", "nessus", "dirbuster", "metasploit", "havij"];
+
+    if (malicious.some((p) => ua.includes(p))) {
+        console.warn(`🤖 Malicious UA blocked | IP=${ip} | UA=${ua}`);
+        return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    next();
+};
+
+// Validate essential headers and size limits
+export const requestValidation = (req: Request, res: Response, next: NextFunction) => {
+    if (req.method !== "OPTIONS" && !req.get("user-agent")) {
+        return res.status(400).json({ success: false, message: "Missing User-Agent" });
+    }
+
+    const size = Number(req.get("content-length") || 0);
+    if (size > 1024 * 1024) {
+        return res.status(413).json({ success: false, message: "Request too large" });
+    }
+
+    next();
+};
+
+// Set secure HTTP headers
+export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
+    res.removeHeader("X-Powered-By");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
-    res.setHeader("X-XSS-Protection", "1; mode=block");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
 
-    // HSTS header for HTTPS
+    // HSTS header for HTTPS connections
     if (req.secure || req.get("x-forwarded-proto") === "https") {
         res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     }
@@ -302,22 +243,10 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
     next();
 };
 
-/**
- * Request logging middleware for security monitoring
- */
-export const securityLogger = (req: Request, res: Response, next: NextFunction) => {
-    const clientIP = req.ip || req.socket?.remoteAddress || "unknown";
-    const userAgent = req.get("User-Agent");
-    const method = req.method;
-    const url = req.originalUrl;
-
-    // Log only critical security events (Morgan already does that)
-    const isAuthEndpoint = url.includes("/api/auth");
-    const isSuspicious = req.rateLimit && req.rateLimit.remaining <= 2;
-
-    if (isAuthEndpoint || isSuspicious) {
-        console.log(`🔒 ${method} ${url} - IP: ${clientIP}`);
+// Security related logging
+export const securityLogger = (req: Request, _res: Response, next: NextFunction) => {
+    if (req.rateLimit && req.rateLimit.remaining <= 2) {
+        console.warn(`⚠️ High traffic | IP=${req.clientIP} | Path=${req.originalUrl} | Remaining=${req.rateLimit.remaining}`);
     }
-
     next();
 };

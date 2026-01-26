@@ -1,295 +1,196 @@
 import { Request, Response, NextFunction } from "express";
 import { TIMING_CONSTANTS } from "@/constants";
+import redis from "@/utils/redis";
 
-// Memory-safe in-memory storage with size limits and TTL
 interface LockoutData {
     count: number;
     lockedUntil?: number;
     createdAt: number;
 }
 
+/**  Safe in-memory fallback store **/
 class SafeMemoryStore {
     private store = new Map<string, LockoutData>();
     private readonly maxSize: number;
     private readonly defaultTTL: number;
-    private cleanupInterval?: NodeJS.Timeout;
-    private isDestroyed = false;
 
     constructor(maxSize = 10000, defaultTTL = 24 * 60 * 60 * 1000) {
-        // 24 hours TTL
         this.maxSize = maxSize;
         this.defaultTTL = defaultTTL;
-
-        // Cleanup every 5 minutes
-        this.cleanupInterval = setInterval(
-            () => {
-                if (!this.isDestroyed) {
-                    this.cleanup();
-                }
-            },
-            5 * 60 * 1000,
-        );
-        this.cleanupInterval.unref(); // Don't keep process alive
     }
 
-    set(key: string, value: Omit<LockoutData, "createdAt">): void {
-        // Prevent memory bloat
-        if (this.store.size >= this.maxSize) {
-            this.evictOldest();
+    get(key: string): LockoutData | null {
+        const data = this.store.get(key);
+        if (!data) return null;
+
+        if (Date.now() - data.createdAt > this.defaultTTL) {
+            this.store.delete(key);
+            return null;
         }
 
-        this.store.set(key, {
-            ...value,
-            createdAt: Date.now(),
-        });
-    }
-
-    get(key: string): LockoutData | undefined {
-        const data = this.store.get(key);
-
-        // Check if expired
-        if (data && this.isExpired(data)) {
+        if (data.lockedUntil && Date.now() > data.lockedUntil) {
             this.store.delete(key);
-            return undefined;
+            return null;
         }
 
         return data;
     }
 
-    delete(key: string): void {
-        this.store.delete(key);
-    }
-
-    private isExpired(data: LockoutData): boolean {
-        const now = Date.now();
-
-        // Check TTL expiration
-        if (now - data.createdAt > this.defaultTTL) {
-            return true;
-        }
-
-        // Check lockout expiration
-        if (data.lockedUntil && now > data.lockedUntil) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private evictOldest(): void {
-        // Remove 10% of oldest entries when at capacity
-        const entries = Array.from(this.store.entries()).sort((a, b) => a[1].createdAt - b[1].createdAt);
-
-        const toRemove = Math.floor(entries.length * 0.1);
-        for (let i = 0; i < toRemove; i++) {
-            this.store.delete(entries[i][0]);
-        }
-    }
-
-    private cleanup(): void {
-        let cleanedCount = 0;
-
-        for (const [key, data] of this.store.entries()) {
-            if (this.isExpired(data)) {
-                this.store.delete(key);
-                cleanedCount++;
+    set(key: string, value: Omit<LockoutData, "createdAt">) {
+        if (this.store.size >= this.maxSize) {
+            const iterator = this.store.keys().next();
+            if (!iterator.done) {
+                this.store.delete(iterator.value);
             }
         }
 
-        if (cleanedCount > 0) {
-            console.log(`🧹 Cleaned up ${cleanedCount} expired lockout entries. Store size: ${this.store.size}`);
-        }
+        this.store.set(key, { ...value, createdAt: Date.now() });
     }
 
-    getStats() {
-        return {
-            size: this.store.size,
-            maxSize: this.maxSize,
-            memoryUsage: `${Math.round((this.store.size / this.maxSize) * 100)}%`,
-        };
+    delete(key: string) {
+        this.store.delete(key);
     }
 
-    destroy(): void {
-        this.isDestroyed = true;
-        if (this.cleanupInterval) {
-            clearInterval(this.cleanupInterval);
-            this.cleanupInterval = undefined;
-        }
+    clear() {
         this.store.clear();
     }
 }
 
-// Singleton instances to prevent multiple interval creation
-let failedAttempts: SafeMemoryStore;
-let accountLockouts: SafeMemoryStore;
+/**  Safe in-memory stores **/
+const memoryFailedAttempts = new SafeMemoryStore(5000, 60 * 60 * 1000);
+const memoryAccountLockouts = new SafeMemoryStore(10000, 24 * 60 * 60 * 1000);
 
-const initializeSecurityStores = () => {
-    if (!failedAttempts) {
-        failedAttempts = new SafeMemoryStore(5000, 60 * 60 * 1000); // 5K entries, 1 hour TTL
+const useRedis = Boolean(redis);
+
+/**  Store helpers **/
+const getLockout = async (key: string): Promise<LockoutData | null> => {
+    if (!useRedis) return memoryAccountLockouts.get(key);
+
+    const data = await redis!.get<LockoutData>(`lockout:${key}`);
+    if (!data) return null;
+
+    if (data.lockedUntil && Date.now() > data.lockedUntil) {
+        await redis!.del(`lockout:${key}`);
+        return null;
     }
-    if (!accountLockouts) {
-        accountLockouts = new SafeMemoryStore(10000, 24 * 60 * 60 * 1000); // 10K entries, 24 hour TTL
-    }
+
+    return data;
 };
 
-// Initialize stores immediately
-initializeSecurityStores();
+const setLockout = async (key: string, data: Omit<LockoutData, "createdAt">, ttlMs: number) => {
+    if (!useRedis) {
+        memoryAccountLockouts.set(key, data);
+        return;
+    }
 
-/**
- * Basic honeypot middleware to catch bots
- */
+    await redis!.set(`lockout:${key}`, { ...data, createdAt: Date.now() }, { px: ttlMs });
+};
+
+const clearLockout = async (key: string) => {
+    if (!useRedis) {
+        memoryAccountLockouts.delete(key);
+        return;
+    }
+    await redis!.del(`lockout:${key}`);
+};
+
+const incrementFailure = async (key: string) => {
+    if (!useRedis) {
+        const data = memoryFailedAttempts.get(key) || { count: 0, createdAt: Date.now() };
+        memoryFailedAttempts.set(key, { count: data.count + 1 });
+        return data.count + 1;
+    }
+
+    const count = await redis!.incr(`fail:${key}`);
+    if (count === 1) {
+        await redis!.expire(`fail:${key}`, Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000));
+    }
+    return count;
+};
+
+const clearFailures = async (key: string) => {
+    if (!useRedis) {
+        memoryFailedAttempts.delete(key);
+        return;
+    }
+    await redis!.del(`fail:${key}`);
+};
+
+/** Middlewares **/
 export const honeypot = (req: Request, res: Response, next: NextFunction) => {
-    // Check if honeypot field exists and has content
-    if (req.body && req.body.website && req.body.website.trim() !== "") {
-        console.warn(`🍯 Bot detected - Honeypot filled by IP: ${req.ip}`);
-
-        // Don't reveal it's a honeypot - just return success
-        return res.status(200).json({
-            success: true,
-            message: "Registration successful",
-        });
+    if (req.body?.website) {
+        console.warn(`🍯 Honeypot triggered by IP=${req.ip}`);
+        return res.status(200).json({ success: true });
     }
-
-    // Remove honeypot field before processing
-    if (req.body && req.body.website) {
-        delete req.body.website;
-    }
-
+    delete req.body?.website;
     next();
 };
 
-/**
- * Account lockout protection - prevents brute force on specific accounts
- */
-export const accountLockoutProtection = (req: Request, res: Response, next: NextFunction) => {
-    const email = req.body.email?.toLowerCase();
+export const accountLockoutProtection = async (req: Request, res: Response, next: NextFunction) => {
+    const email = req.body?.email?.toLowerCase();
+    if (!email || !req.path.includes("signin")) return next();
 
-    // Only apply to login attempts
-    if (!email || !req.path.includes("signin")) {
-        return next();
-    }
-
-    const lockoutData = accountLockouts.get(email);
-    const now = Date.now();
-
-    // Check if account is currently locked
-    if (lockoutData && lockoutData.lockedUntil && now < lockoutData.lockedUntil) {
-        const remainingTime = Math.ceil((lockoutData.lockedUntil - now) / 1000 / 60); // minutes
-
+    const lockout = await getLockout(email);
+    if (lockout?.lockedUntil && Date.now() < lockout.lockedUntil) {
         return res.status(423).json({
             success: false,
-            message: `Account temporarily locked due to multiple failed login attempts. Try again in ${remainingTime} minutes.`,
-            lockedUntil: new Date(lockoutData.lockedUntil).toISOString(),
+            message: "Account temporarily locked due to multiple failed login attempts.",
+            lockedUntil: new Date(lockout.lockedUntil).toISOString(),
         });
     }
 
     next();
 };
 
-/**
- * Handle failed login attempts
- * Express middleware to track failed login attempts after authentication
- */
-export const handleFailedLogin = (req: Request, res: Response, next: NextFunction) => {
-    const email = res.locals.attemptEmail;
+export const handleFailedLogin = async (req: Request, res: Response, next: NextFunction) => {
+    const email = res.locals.attemptEmail?.toLowerCase();
     const authFailed = res.locals.authenticationFailed;
 
-    if (email && authFailed) {
-        const ip = req.ip || req.socket?.remoteAddress || "unknown";
-        const normalizedEmail = email.toLowerCase();
-        const now = Date.now();
+    if (!email) return next();
 
-        // Track IP-based failures
-        const ipFailures = failedAttempts.get(ip) || { count: 0 };
-        const updatedIpFailures = {
-            count: ipFailures.count + 1,
-            lockedUntil: now + TIMING_CONSTANTS.FIFTEEN_MINUTES, // 15 minutes
-        };
-        failedAttempts.set(ip, updatedIpFailures);
+    const ip = req.ip || "unknown";
 
-        // Track account-based failures
-        const accountFailures = accountLockouts.get(normalizedEmail) || { count: 0 };
+    if (authFailed) {
+        const failures = await incrementFailure(`${ip}:${email}`);
 
-        // Progressive lockout times
-        let lockoutMinutes = 5; // Start with 5 minutes
-        if (accountFailures.count >= 10) {
-            lockoutMinutes = 60; // 1 hour after 10 attempts
-        } else if (accountFailures.count >= 5) {
-            lockoutMinutes = 30; // 30 minutes after 5 attempts
-        } else if (accountFailures.count >= 3) {
-            lockoutMinutes = 15; // 15 minutes after 3 attempts
-        }
+        let lockMinutes = 5;
+        if (failures >= 10) lockMinutes = 60;
+        else if (failures >= 5) lockMinutes = 30;
+        else if (failures >= 3) lockMinutes = 15;
 
-        const updatedAccountFailures = {
-            count: accountFailures.count + 1,
-            lockedUntil: now + lockoutMinutes * 60 * 1000,
-        };
-        accountLockouts.set(normalizedEmail, updatedAccountFailures);
+        await setLockout(email, { count: failures, lockedUntil: Date.now() + lockMinutes * 60 * 1000 }, 24 * 60 * 60 * 1000);
 
-        console.warn(`🚨 Failed login attempt #${accountFailures.count} for ${normalizedEmail} from IP: ${ip}`);
-    } else if (email && !authFailed) {
-        // Success - clear any existing records
-        const ip = req.ip || req.socket?.remoteAddress || "unknown";
-        handleSuccessfulLogin(email, ip);
+        console.warn(`🚨 Failed login ${failures}x | ${email} | IP=${ip}`);
+    } else {
+        await clearFailures(`${ip}:${email}`);
+        await clearLockout(email);
+        console.log(`✅ Successful login | ${email}`);
     }
 
     next();
 };
 
-/**
- * Handle successful login - reset failed attempts
- */
-export const handleSuccessfulLogin = (email: string, ip: string) => {
-    const normalizedEmail = email.toLowerCase();
-
-    // Clear failed attempts on successful login
-    accountLockouts.delete(normalizedEmail);
-    failedAttempts.delete(ip);
-
-    console.log(`✅ Successful login for ${normalizedEmail} from IP: ${ip}`);
-};
-
-/**
- * Enhanced security headers for authentication endpoints
- */
-export const authSecurity = (req: Request, res: Response, next: NextFunction) => {
-    // Prevent caching of authentication responses
+export const authSecurity = (_req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
-
-    // Additional security headers for auth
     res.setHeader("X-Auth-Security", "enabled");
     res.setHeader("X-Content-Type-Options", "nosniff");
-
-    // Stricter CSP for auth endpoints
     res.setHeader(
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self';",
     );
-
     next();
 };
 
 /**
- * Cleanup memory stores on shutdown
+ * Cleanup security stores on shutdown
+ * (Memory only, Redis is TTL-based)
  */
 export const cleanupSecurityStores = () => {
-    if (failedAttempts) {
-        failedAttempts.destroy();
-    }
-    if (accountLockouts) {
-        accountLockouts.destroy();
+    if (!useRedis) {
+        memoryFailedAttempts.clear();
+        memoryAccountLockouts.clear();
     }
     console.log("✅ Security stores cleaned up");
-};
-
-/**
- * Get security store statistics for monitoring
- */
-export const getSecurityStoreStats = () => {
-    return {
-        failedAttempts: failedAttempts?.getStats(),
-        accountLockouts: accountLockouts?.getStats(),
-    };
 };

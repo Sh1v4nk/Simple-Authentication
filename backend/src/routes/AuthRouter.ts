@@ -27,6 +27,7 @@ import {
     progressiveDelay,
     honeypot,
     accountLockoutProtection,
+    handleFailedLogin,
     securityHeaders,
     requestValidation,
     securityLogger,
@@ -41,21 +42,19 @@ router.use(securityLogger); // Request logging
 router.use(requestValidation); // Basic request validation
 router.use(ipSecurityCheck); // IP and user-agent validation
 router.use(authSecurity); // Auth-specific security
-router.use(progressiveDelay); // Progressive delays
-router.use(honeypot); // Bot detection
 
 // Auth verification endpoint (minimal rate limiting for UX)
 router.get("/verify-auth", verifyAuthToken, verifyAuth);
 
-router.post("/signup", authRateLimit, validateSignUp, checkExistingUser, signup);
-router.post("/signin", authRateLimit, accountLockoutProtection, validateSignIn, signin);
+router.post("/signup", authRateLimit, progressiveDelay, honeypot, validateSignUp, checkExistingUser, signup);
+router.post("/signin", authRateLimit, progressiveDelay, accountLockoutProtection, validateSignIn, signin, handleFailedLogin);
 router.post("/signout", verifyAuthToken, signout);
 
 router.post("/verify-email", emailVerificationRateLimit, validateEmailCode, verifyEmail);
 router.post("/resend-otp", emailVerificationRateLimit, verifyAuthToken, resendOTP);
 
-router.post("/forgot-password", passwordResetRateLimit, validateForgotPassword, forgotPassword);
-router.post("/reset-password/:token", passwordResetRateLimit, validateResetPassword, resetPassword);
+router.post("/forgot-password", passwordResetRateLimit, progressiveDelay, validateForgotPassword, forgotPassword);
+router.post("/reset-password/:token", passwordResetRateLimit, progressiveDelay, validateResetPassword, resetPassword);
 
 router.post("/refresh", refreshTokenRateLimit, refreshToken);
 router.post("/revoke-all", verifyAuthToken, revokeAllTokens);

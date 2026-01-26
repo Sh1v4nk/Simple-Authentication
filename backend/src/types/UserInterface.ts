@@ -10,8 +10,6 @@ export interface IUser extends Document {
     resetPasswordTokenExpiresAt?: Date;
     emailVerificationToken?: string;
     emailVerificationTokenExpiresAt?: Date;
-    loginAttempts: number;
-    lockUntil?: Date;
     ipAddresses: Array<{
         ip: string;
         lastUsed: Date;

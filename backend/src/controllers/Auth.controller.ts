@@ -2,7 +2,12 @@ import type { Request, Response } from "express";
 import { Types } from "mongoose";
 import User from "@/models/UserModel";
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES, TIMING_CONSTANTS } from "@/constants";
-import { sendVerificationToken, successfulVerificationEmail, resetPasswordEmail, passwordResetSuccessfulEmail } from "@/configs/Mailer/SendEmail";
+import {
+    sendVerificationToken,
+    successfulVerificationEmail,
+    resetPasswordEmail,
+    passwordResetSuccessfulEmail,
+} from "@/configs/Mailer/SendEmail";
 import {
     sendSuccessResponse,
     sendErrorResponse,
@@ -42,8 +47,6 @@ const sanitizeUserForResponse = (user: any) => ({
     ...user,
     password: undefined,
     refreshTokens: undefined,
-    loginAttempts: undefined,
-    lockUntil: undefined,
     ipAddresses: undefined,
     resetPasswordToken: undefined,
     resetPasswordTokenExpiresAt: undefined,
@@ -146,6 +149,9 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
         const { email, password } = req.body;
         const { clientIP, userAgent } = getClientInfo(req);
 
+        // Set email for lockout middleware tracking
+        res.locals.attemptEmail = email;
+
         // Find user with optimized query (includes password)
         const user = await UserQueryOptimizer.findByEmailForAuth(email);
         const dummyPassword = "$2b$11$4p3K.aVOiYjP3HP6hBbrLulhwacAfdeHFZ0HLvbwwer7WhiHZ.X.S"; // Timing attack protection
@@ -158,29 +164,12 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Check if account is locked (database-level check)
-        if (user.lockUntil && user.lockUntil > new Date()) {
-            const lockDuration = Math.ceil((user.lockUntil.getTime() - Date.now()) / 1000 / 60);
-            res.locals.authenticationFailed = true; // Flag for middleware
-            sendErrorResponse(res, `Account temporarily locked. Try again in ${lockDuration} minutes.`, HTTP_STATUS.LOCKED);
-            return;
-        }
-
         // Verify password
         const isPasswordValid = await comparePassword(password, user.password);
 
         if (!isPasswordValid) {
-            // Flag for middleware
-            res.locals.authenticationFailed = true;
-
-            // Handle failed login attempt (database-level)
-            const allowMoreAttempts = await UserQueryOptimizer.incrementLoginAttempts(email);
-
-            if (!allowMoreAttempts) {
-                sendErrorResponse(res, ERROR_MESSAGES.ACCOUNT_LOCKED, HTTP_STATUS.LOCKED);
-            } else {
-                sendErrorResponse(res, ERROR_MESSAGES.INVALID_CREDENTIALS);
-            }
+            res.locals.authenticationFailed = true; // Flag for middleware (Redis lockout handles this)
+            sendErrorResponse(res, ERROR_MESSAGES.INVALID_CREDENTIALS);
             return;
         }
 

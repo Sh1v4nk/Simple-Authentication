@@ -36,7 +36,7 @@ const createLimiter = (name: string, requests: number, windowMs: number) => {
         redis,
         limiter: Ratelimit.slidingWindow(requests, `${windowMs} ms`),
         prefix: `ratelimit:${name}`,
-        analytics: true,
+        analytics: false,
     });
 };
 

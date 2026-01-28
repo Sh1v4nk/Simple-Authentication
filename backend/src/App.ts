@@ -17,12 +17,15 @@ app.use(helmet());
 const corsOptions = {
     origin: (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
         const isDev = process.env.NODE_ENV !== "production";
-        const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+        const clientUrl = process.env.CLIENT_URL;
 
         // Allow no origin (internal requests) or dev localhost
         if (!origin || (isDev && origin.startsWith("http://localhost:"))) return callback(null, true);
 
-        if (allowedOrigins.includes(origin)) return callback(null, true); // Check whitelist
+        if (clientUrl && origin === clientUrl) return callback(null, true);
+
+        const vercelPattern = /^https:\/\/authhub[a-z0-9-]*\.vercel\.app$/i;
+        if (vercelPattern.test(origin)) return callback(null, true);
 
         callback(new Error("Not allowed by CORS"));
     },

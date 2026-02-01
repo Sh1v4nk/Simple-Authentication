@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import { TokenService } from "./tokenService";
 
-// Token cleanup maintenance script
-
 export const runTokenCleanup = async (): Promise<{
     deletedCount: number;
     usersProcessed: number;
@@ -12,7 +10,6 @@ export const runTokenCleanup = async (): Promise<{
     try {
         const result = await TokenService.cleanupExpiredTokens();
 
-        // Trigger garbage collection after cleanup if available
         if (global.gc) {
             const before = process.memoryUsage().heapUsed;
             global.gc();
@@ -28,11 +25,12 @@ export const runTokenCleanup = async (): Promise<{
     }
 };
 
-// If this script is run directly
-if (require.main === module) {
+const isMainModule =
+    import.meta.url.startsWith("file:") && process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, "/"));
+
+if (isMainModule || import.meta.main) {
     (async () => {
         try {
-            // Connect to database
             const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/Auth-Project";
             await mongoose.connect(mongoUri, {
                 maxPoolSize: 5,
@@ -40,10 +38,8 @@ if (require.main === module) {
             });
             console.log("✅ Connected to MongoDB");
 
-            // Run cleanup
             await runTokenCleanup();
 
-            // Close connection
             await mongoose.connection.close();
             process.exit(0);
         } catch (error) {

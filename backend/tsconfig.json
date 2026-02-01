@@ -2,16 +2,21 @@
     "compilerOptions": {
         "baseUrl": "./",
         "paths": { "@/*": ["src/*"] },
-        "target": "es2022",
-        "module": "preserve",
-        "moduleResolution": "bundler",
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
         "rootDir": "./src",
         "outDir": "./dist",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "declaration": false,
+        "sourceMap": false,
+        "allowImportingTsExtensions": false
     },
     "include": ["src/**/*.ts"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "dist"]
 }

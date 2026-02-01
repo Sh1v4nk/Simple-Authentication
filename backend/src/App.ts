@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -12,37 +13,39 @@ const app = express();
 
 // Trust proxy for accurate IP addresses behind reverse proxies
 app.set("trust proxy", 1);
-app.use(helmet());
+
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    ...(process.env.NODE_ENV !== "production" ? ["http://localhost:5173", "http://localhost:3000"] : []),
+].filter(Boolean) as string[];
 
 const corsOptions = {
     origin: (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
-        const isDev = process.env.NODE_ENV !== "production";
-        const clientUrl = process.env.CLIENT_URL;
-
-        // Allow no origin (internal requests) or dev localhost
-        if (!origin || (isDev && origin.startsWith("http://localhost:"))) return callback(null, true);
-
-        if (clientUrl && origin === clientUrl) return callback(null, true);
-
-        const vercelPattern = /^https:\/\/authhub[a-z0-9-]*\.vercel\.app$/i;
-        if (vercelPattern.test(origin)) return callback(null, true);
-
+        if (!origin || allowedOrigins.includes(origin) || /^https:\/\/authhub[a-z0-9-]*\.vercel\.app$/i.test(origin)) {
+            return callback(null, true);
+        }
         callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // restrict allowed request headers
-    exposedHeaders: ["RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"], // make custom headers visible to frontend
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["RateLimit-Limit", "RateLimit-Remaining"],
+    maxAge: 86400, // Cache preflight for 24h
 };
 
+app.use(
+    helmet({
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        contentSecurityPolicy: false, // Handled in authSecurity middleware
+    }),
+);
 app.use(cors(corsOptions));
 
 // Basic rate limiting
 app.use(generalRateLimit);
 
-// Body parsing middleware
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 app.use(cookieParser());
 
 app.get("/", rootRouteRateLimit, (req, res) => {
@@ -58,8 +61,13 @@ app.get("/health", healthCheckRateLimit, async (req, res) => {
     const status = dbHealthy ? "healthy" : "unhealthy";
     const statusCode = dbHealthy ? 200 : 503;
 
-    // Get memory usage
     const memUsage = process.memoryUsage();
+    const rssMB = Math.round(memUsage.rss / 1024 / 1024);
+    const heapMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+
+    if (rssMB > 500) {
+        console.warn(`⚠️ HIGH MEMORY: RSS=${rssMB}MB Heap=${heapMB}MB - Consider restart`);
+    }
 
     res.status(statusCode).json({
         status,
@@ -67,8 +75,8 @@ app.get("/health", healthCheckRateLimit, async (req, res) => {
         uptime: process.uptime(),
         database: dbHealthy ? "connected" : "disconnected",
         memory: {
-            rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
-            heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+            rss: `${rssMB}MB`,
+            heapUsed: `${heapMB}MB`,
             heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
             external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
         },
@@ -79,6 +87,11 @@ let isShuttingDown = false;
 
 async function startServer(): Promise<void> {
     try {
+        process.removeAllListeners("SIGTERM");
+        process.removeAllListeners("SIGINT");
+        process.removeAllListeners("uncaughtException");
+        process.removeAllListeners("unhandledRejection");
+
         await connectDB();
         await ensureIndexes();
 
@@ -87,6 +100,33 @@ async function startServer(): Promise<void> {
         } catch (error) {
             console.error("Startup token cleanup failed:", error);
         }
+
+        // Scheduled token cleanup every 6 hours
+        setInterval(
+            async () => {
+                try {
+                    console.log("⏰ Running scheduled token cleanup...");
+                    await runTokenCleanup();
+                } catch (error) {
+                    console.error("Scheduled cleanup failed:", error);
+                }
+            },
+            6 * 60 * 60 * 1000,
+        );
+
+        // Memory monitoring every 5 minutes
+        setInterval(
+            () => {
+                const mem = process.memoryUsage();
+                const rssMB = Math.round(mem.rss / 1024 / 1024);
+                const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
+
+                if (rssMB > 400) {
+                    console.warn(`⚠️ Memory: RSS=${rssMB}MB Heap=${heapMB}MB Uptime=${Math.round(process.uptime() / 3600)}h`);
+                }
+            },
+            5 * 60 * 1000,
+        );
 
         const PORT: number = parseInt(process.env.PORT || "3000", 10);
 
@@ -120,9 +160,12 @@ async function startServer(): Promise<void> {
             console.log(`Server running on port ${PORT}`);
         });
 
-        server.keepAliveTimeout = 65000;
-        server.headersTimeout = 66000;
-        server.maxHeadersCount = 100;
+        // Aggressive memory optimization settings
+        server.maxConnections = 100; // Limit concurrent connections
+        server.keepAliveTimeout = 5000; // Reduced from 65s - close connections faster
+        server.headersTimeout = 6000; // Reduced from 66s
+        server.maxHeadersCount = 50; // Reduced from 100
+        server.timeout = 30000; // 30s request timeout
 
         // Graceful shutdown
         const gracefulShutdown = async (signal: string) => {
@@ -132,6 +175,7 @@ async function startServer(): Promise<void> {
             console.log(`Received ${signal}, shutting down...`);
 
             try {
+                server.close();
                 await mongoose.connection.close(false);
             } catch (error) {
                 console.error("Database close failed:", error);
@@ -140,13 +184,7 @@ async function startServer(): Promise<void> {
             process.exit(0);
         };
 
-        // Remove any existing listeners to prevent accumulation on hot reload
-        process.removeAllListeners("SIGTERM");
-        process.removeAllListeners("SIGINT");
-        process.removeAllListeners("uncaughtException");
-        process.removeAllListeners("unhandledRejection");
-
-        // Add new listeners
+        // Register signal handlers (listeners already cleaned at startup)
         process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
         process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 

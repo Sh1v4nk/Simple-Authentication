@@ -8,9 +8,10 @@
         "build": "tsc && resolve-tspaths",
         "start": "node dist/App.js",
         "start:bun": "bun dist/App.js",
-        "dev": "bun --watch --expose-gc ./src/App.ts",
-        "clean": "rm -rf dist",
-        "cleanup-tokens": "bun run src/utils/tokenCleanup.ts"
+        "dev": "bun --watch ./src/App.ts",
+        "lint": "eslint src/**/*.ts",
+        "lint:fix": "eslint src/**/*.ts --fix",
+        "clean": "rm -rf dist"
     },
     "dependencies": {
         "@upstash/ratelimit": "^2.0.8",
@@ -28,6 +29,7 @@
         "zod": "^3.25.76"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@types/bcrypt": "^6.0.0",
         "@types/bun": "latest",
         "@types/cookie-parser": "^1.4.10",
@@ -35,7 +37,11 @@
         "@types/express": "^5.0.6",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/morgan": "^1.9.10",
+        "eslint": "^10.0.3",
+        "eslint-config-prettier": "^10.1.8",
+        "prettier": "^3.8.1",
         "resolve-tspaths": "^0.8.23",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.57.0"
     }
 }

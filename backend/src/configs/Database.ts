@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+import { getEnv } from "@/utils/envValidation";
 
 async function connectDB(): Promise<void> {
     try {
@@ -7,9 +8,9 @@ async function connectDB(): Promise<void> {
         mongoose.set("bufferCommands", false);
         mongoose.set("autoIndex", false);
 
-        const mongoUri = process.env.MONGO_URI!;
+        const { MONGO_URI } = getEnv();
 
-        await mongoose.connect(mongoUri, {
+        await mongoose.connect(MONGO_URI, {
             maxPoolSize: 3,
             minPoolSize: 1,
             socketTimeoutMS: 45000,

@@ -1,18 +1,19 @@
 import { MailtrapClient } from "mailtrap";
+import { getEnv } from "@/utils/envValidation";
 
-const TOKEN = process.env.MAILTRAP_API_TOKEN!;
+let client: MailtrapClient | null = null;
 
-if (!TOKEN) {
-    throw new Error("MAILTRAP_API_TOKEN is missing in env");
-}
+const getEmailClient = (): MailtrapClient => {
+    if (client) return client;
 
-const client = new MailtrapClient({
-    token: TOKEN,
-});
+    const { MAILTRAP_API_TOKEN } = getEnv();
+    client = new MailtrapClient({ token: MAILTRAP_API_TOKEN });
+    return client;
+};
 
 const sender = {
     email: "authhub@emails.shivankpandey.xyz",
     name: "Authentication",
 };
 
-export { client, sender };
+export { sender, getEmailClient };

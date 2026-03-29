@@ -1,5 +1,9 @@
+import { getEnv } from "@/utils/envValidation";
+
 export const SECURITY_CONSTANTS = {
-    SALT_ROUNDS: parseInt(process.env.SALT_ROUNDS || "10", 10),
+    get SALT_ROUNDS() {
+        return getEnv().SALT_ROUNDS;
+    },
 };
 
 export const RESET_TOKEN_BYTES = 32;

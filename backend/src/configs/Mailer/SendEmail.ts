@@ -1,4 +1,4 @@
-import { client, sender } from "./EmailServer";
+import { getEmailClient, sender } from "./EmailServer";
 import { logger } from "@/utils/logger";
 import {
     SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
@@ -15,7 +15,7 @@ export async function sendVerificationToken(username: string, email: string, ver
             throw new Error("Email and verification token are required.");
         }
 
-        await client.send({
+        await getEmailClient().send({
             from: sender,
             to: [{ email }],
             subject: "Verify your email",
@@ -36,7 +36,7 @@ export async function successfulVerificationEmail(username: string, email: strin
     try {
         if (!email) throw new Error("Email is required.");
 
-        await client.send({
+        await getEmailClient().send({
             from: sender,
             to: [{ email }],
             subject: "Email verified successfully",
@@ -55,7 +55,7 @@ export async function resetPasswordEmail(username: string, email: string, resetP
     try {
         if (!email) throw new Error("Email is required.");
 
-        await client.send({
+        await getEmailClient().send({
             from: sender,
             to: [{ email }],
             subject: "Reset your password",
@@ -76,7 +76,7 @@ export async function passwordResetSuccessfulEmail(username: string, email: stri
     try {
         if (!email) throw new Error("Email is required.");
 
-        await client.send({
+        await getEmailClient().send({
             from: sender,
             to: [{ email }],
             subject: "Password reset successful",

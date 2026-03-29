@@ -5,6 +5,7 @@ export const HTTP_STATUS = {
     UNAUTHORIZED: 401,
     FORBIDDEN: 403,
     NOT_FOUND: 404,
+    CONFLICT: 409,
     LOCKED: 423,
     TOO_MANY_REQUESTS: 429,
     INTERNAL_SERVER_ERROR: 500,
@@ -28,7 +29,6 @@ export const ERROR_MESSAGES = {
     EMAIL_ALREADY_EXISTS: "Email already exists",
     USERNAME_ALREADY_EXISTS: "Username already exists",
     INVALID_CREDENTIALS: "Invalid credentials",
-    ACCOUNT_LOCKED: "Account temporarily locked due to too many failed login attempts",
 
     // Authorization-related errors
     UNAUTHORIZED_USER_ID: "Unauthorized: User ID not provided",
@@ -42,14 +42,8 @@ export const ERROR_MESSAGES = {
     EXPIRED_RESET_TOKEN: "Invalid or expired reset token",
     TOKEN_EXPIRED: "Token has expired",
     INVALID_TOKEN: "Invalid token",
-    TOKEN_DECODING_FAILED: "Token decoding failed",
-    INVALID_TOKEN_TYPE: "Invalid token type",
-    INVALID_TOKEN_PAYLOAD: "Invalid token payload",
     TOKEN_NOT_ACTIVE: "Token not yet active",
     INVALID_REFRESH_TOKEN: "Invalid or expired refresh token",
-
-    // JWT errors
-    JWT_SECRET_NOT_DEFINED: "JWT secret is not defined",
 
     // General error handling
     UNKNOWN_ERROR: "An unknown error occurred",
@@ -66,6 +60,7 @@ export const VALIDATION_MESSAGES = {
     PASSWORD_SPECIAL_CHAR: "Password must contain at least one special character",
     USERNAME_REQUIRED: "Username is required",
     USERNAME_MAX: "Username must be at most 20 characters",
+    USERNAME_INVALID_CHARS: "Username can only contain letters, numbers, underscores, dots, and hyphens",
     EMAIL_CODE_LENGTH: "Verification code must be exactly 6 characters long",
-    RESET_TOKEN_LENGTH: "Token must be exactly 40 characters long",
+    RESET_TOKEN_LENGTH: "Token must be exactly 64 characters long",
 };

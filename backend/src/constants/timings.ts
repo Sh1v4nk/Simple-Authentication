@@ -1,0 +1,7 @@
+export const TIMING_CONSTANTS = {
+    ONE_MINUTE: 1 * 60 * 1000,
+    FIVE_MINUTES: 5 * 60 * 1000,
+    FIFTEEN_MINUTES: 15 * 60 * 1000,
+    ONE_HOUR: 1 * 60 * 60 * 1000,
+    SEVEN_DAYS: 7 * 24 * 60 * 60 * 1000,
+};

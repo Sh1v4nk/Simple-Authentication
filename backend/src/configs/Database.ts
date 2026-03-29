@@ -1,14 +1,13 @@
 import mongoose from "mongoose";
+import { logger } from "@/utils/logger";
 
 async function connectDB(): Promise<void> {
     try {
         mongoose.set("strictQuery", true);
         mongoose.set("bufferCommands", false);
-        mongoose.set("bufferTimeoutMS", 0);
         mongoose.set("autoIndex", false);
-        mongoose.set("maxTimeMS", 10000);
 
-        const mongoUri: string = process.env.MONGO_URI || "mongodb://localhost:27017/Auth-Project";
+        const mongoUri = process.env.MONGO_URI!;
 
         await mongoose.connect(mongoUri, {
             maxPoolSize: 3,
@@ -21,30 +20,28 @@ async function connectDB(): Promise<void> {
             compressors: ["zlib"],
         });
 
-        await mongoose.connection.asPromise();
-
         mongoose.connection.removeAllListeners("error");
         mongoose.connection.removeAllListeners("disconnected");
         mongoose.connection.removeAllListeners("reconnected");
 
-        mongoose.connection.once("error", (err) => {
-            console.error("MongoDB connection error:", err);
+        mongoose.connection.on("error", (err) => {
+            logger.error({ err }, "[DB] Connection error");
         });
 
-        mongoose.connection.once("disconnected", () => {
-            console.log("MongoDB disconnected - cleaning up");
+        mongoose.connection.on("disconnected", () => {
+            logger.warn("[DB] Disconnected");
         });
 
-        mongoose.connection.once("reconnected", () => {
-            console.log("MongoDB reconnected");
+        mongoose.connection.on("reconnected", () => {
+            logger.info("[DB] Reconnected");
         });
 
-        console.log("🥳 Connected to MongoDB successfully");
+        logger.info("[DB] Connected");
     } catch (error: unknown) {
         if (error instanceof Error) {
-            console.error("😕 Error connecting to MongoDB:", error.message);
+            logger.error({ err: error }, "[DB] Connection failed");
         } else {
-            console.error("😕 An unexpected error occurred:", error);
+            logger.error({ err: error }, "[DB] Unexpected connection failure");
         }
         process.exit(1);
     }

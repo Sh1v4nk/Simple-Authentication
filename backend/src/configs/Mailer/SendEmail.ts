@@ -1,10 +1,11 @@
 import { client, sender } from "./EmailServer";
+import { logger } from "@/utils/logger";
 import {
     SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
     VERIFICATION_EMAIL_TEMPLATE,
     PASSWORD_RESET_REQUEST_TEMPLATE,
     PASSWORD_RESET_SUCCESS_TEMPLATE,
-} from "@/utils";
+} from "@/utils/emailTemplates";
 
 const companyName = "Auth";
 
@@ -24,9 +25,10 @@ export async function sendVerificationToken(username: string, email: string, ver
             category: "Verification",
         });
 
-        console.log("Verification email sent successfully");
+        logger.info("[EMAIL] Verification email sent");
     } catch (error) {
-        console.error("Error sending verification email:", error);
+        logger.error({ err: error }, "[EMAIL] Failed to send verification email");
+        throw error;
     }
 }
 
@@ -42,9 +44,10 @@ export async function successfulVerificationEmail(username: string, email: strin
             category: "Verification Success",
         });
 
-        console.log("Verification success email sent");
+        logger.info("[EMAIL] Verification success email sent");
     } catch (error) {
-        console.error("Error sending success email:", error);
+        logger.error({ err: error }, "[EMAIL] Failed to send success email");
+        throw error;
     }
 }
 
@@ -62,9 +65,10 @@ export async function resetPasswordEmail(username: string, email: string, resetP
             category: "Password Reset",
         });
 
-        console.log("Password reset email sent");
+        logger.info("[EMAIL] Password reset email sent");
     } catch (error) {
-        console.error("Error sending password reset email:", error);
+        logger.error({ err: error }, "[EMAIL] Failed to send password reset email");
+        throw error;
     }
 }
 
@@ -80,8 +84,9 @@ export async function passwordResetSuccessfulEmail(username: string, email: stri
             category: "Password Reset Success",
         });
 
-        console.log("Password reset success email sent");
+        logger.info("[EMAIL] Password reset success email sent");
     } catch (error) {
-        console.error("Error sending password reset success email:", error);
+        logger.error({ err: error }, "[EMAIL] Failed to send password reset success email");
+        throw error;
     }
 }

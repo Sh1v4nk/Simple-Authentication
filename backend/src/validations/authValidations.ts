@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { VALIDATION_MESSAGES } from "@/constants/enums";
 
-export const emailSchema = z.string().email({ message: VALIDATION_MESSAGES.EMAIL_INVALID });
+export const emailSchema = z.string().trim().toLowerCase().email({ message: VALIDATION_MESSAGES.EMAIL_INVALID });
 
 export const passwordSchema = z
     .string()
@@ -22,8 +22,11 @@ export const passwordSchema = z
 
 export const usernameSchema = z
     .string()
+    .trim()
+    .toLowerCase()
     .min(2, { message: VALIDATION_MESSAGES.USERNAME_REQUIRED })
-    .max(20, { message: VALIDATION_MESSAGES.USERNAME_MAX });
+    .max(20, { message: VALIDATION_MESSAGES.USERNAME_MAX })
+    .regex(/^[a-z0-9_.-]+$/, { message: VALIDATION_MESSAGES.USERNAME_INVALID_CHARS });
 
 export const tokenSchema = z.string().length(40, { message: VALIDATION_MESSAGES.RESET_TOKEN_LENGTH });
 

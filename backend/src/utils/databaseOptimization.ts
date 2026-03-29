@@ -1,39 +1,25 @@
 import mongoose from "mongoose";
 import User from "@/models/UserModel";
 import type { IUser } from "@/types/UserInterface";
-import { TIMING_CONSTANTS } from "@/constants";
+import { logger } from "@/utils/logger";
 
-/**
- * Database optimization utilities for efficient querying and indexing
- */
 export class UserQueryOptimizer {
-    /**
-     * Find user by email with password included (for authentication)
-     */
     static async findByEmailForAuth(email: string): Promise<IUser | null> {
         return User.findOne({ email: email.toLowerCase() }).select("+password");
     }
 
-    /**
-     * Update login information after successful authentication
-     */
     static async updateLoginInfo(userId: string, clientIP: string, userAgent: string): Promise<void> {
-        // First, try to update existing IP
         const updateResult = await User.updateOne(
-            {
-                _id: userId,
-                "ipAddresses.ip": clientIP, // IP exists
-            },
+            { _id: userId, "ipAddresses.ip": clientIP },
             {
                 $set: {
                     lastLogin: new Date(),
-                    "ipAddresses.$.lastUsed": new Date(), // Update matched IP
+                    "ipAddresses.$.lastUsed": new Date(),
                     "ipAddresses.$.userAgent": userAgent,
                 },
             },
         );
 
-        // If IP doesn't exist, add it
         if (updateResult.matchedCount === 0) {
             await User.updateOne(
                 { _id: userId },
@@ -42,7 +28,7 @@ export class UserQueryOptimizer {
                     $push: {
                         ipAddresses: {
                             $each: [{ ip: clientIP, lastUsed: new Date(), userAgent }],
-                            $slice: -20, // Keep last 20 (matches MAX_IPS in pre-save)
+                            $slice: -20,
                         },
                     },
                 },
@@ -51,36 +37,24 @@ export class UserQueryOptimizer {
     }
 }
 
-/**
- * Ensure all database indexes are created
- */
 export const ensureIndexes = async (): Promise<void> => {
     try {
         await User.createIndexes();
-        console.log("✅ Database indexes ensured successfully");
+        logger.info("[DB] Indexes ensured");
     } catch (error) {
-        console.error("❌ Failed to ensure database indexes:", error);
+        logger.error({ err: error }, "[DB] Failed to ensure indexes");
         throw error;
     }
 };
 
-/**
- * Check database health and connection status
- */
 export const checkDatabaseHealth = async (): Promise<boolean> => {
     try {
-        const state = mongoose.connection.readyState;
+        if (mongoose.connection.readyState !== 1) return false;
 
-        // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
-        if (state !== 1) {
-            return false;
-        }
-
-        // Additional health check - try a simple query
-        await User.findOne({}).limit(1).lean();
+        await mongoose.connection.db!.command({ ping: 1 });
         return true;
     } catch (error) {
-        console.error("Database health check failed:", error);
+        logger.error({ err: error }, "[DB] Health check failed");
         return false;
     }
 };

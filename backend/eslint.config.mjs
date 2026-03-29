@@ -13,7 +13,7 @@ export default tseslint.config(js.configs.recommended, ...tseslint.configs.recom
             },
         ],
         "@typescript-eslint/consistent-type-imports": "warn",
-        "no-console": "off", // you use console.* intentionally
+        "no-console": "error", // used console.* intentionally
         "no-process-exit": "off", // validateEnv uses process.exit
         eqeqeq: "error", // no == only ===
         "no-var": "error",

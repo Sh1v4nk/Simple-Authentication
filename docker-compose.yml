@@ -14,44 +14,100 @@ services:
             start_period: 30s
         restart: unless-stopped
 
+    redis:
+        image: redis:7-alpine
+        command: redis-server --save 60 1 --loglevel warning
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
+    upstash-proxy:
+        image: hiett/serverless-redis-http:latest
+        ports:
+            - "8079:80"
+        environment:
+            SRH_MODE: env
+            SRH_TOKEN: local_development_token
+            SRH_CONNECTION_STRING: redis://redis:6379
+        depends_on:
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+
     backend:
         image: oven/bun:1.2.2-alpine
         working_dir: /app
+        init: true
         volumes:
             - ./backend:/app
             - backend_node_modules:/app/node_modules
-        command: sh -c "bun install && bun run dev"
+            - backend_bun_cache:/root/.bun/install/cache
+        command: sh -c "bun install --frozen-lockfile && bun run dev"
         ports:
             - "3000:3000"
         environment:
-            - MONGO_URI=mongodb://mongodb:27017/Simple-Auth
-            - NODE_ENV=development
-            - JWT_SECRET=your-jwt-secret-for-dev
-            - SALT_ROUNDS=10
-            - CLIENT_URL=http://localhost:5173
-            - MAILTRAP_API_TOKEN=your-mailtrap-api-token
+            MONGO_URI: mongodb://mongodb:27017/Simple-Auth
+            NODE_ENV: development
+            PORT: 3000
+            JWT_SECRET: dev_jwt_secret_change_me_32_chars_min
+            JWT_AUDIENCE: simple-auth-client
+            JWT_ISSUER: simple-auth-api
+            SALT_ROUNDS: 12
+            CLIENT_URL: http://localhost:5173
+            MAILTRAP_API_TOKEN: local_mailtrap_token
+            INFRA_TIER: free
+            HEALTH_CACHE_TTL_MS: 15000
+            LOG_LEVEL: info
+            UPSTASH_REDIS_REST_URL: http://upstash-proxy
+            UPSTASH_REDIS_REST_TOKEN: local_development_token
         depends_on:
             mongodb:
                 condition: service_healthy
+            upstash-proxy:
+                condition: service_started
+        healthcheck:
+            test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 40s
         restart: unless-stopped
 
     frontend:
         image: oven/bun:1.2.2-alpine
         working_dir: /app
+        init: true
         volumes:
             - ./frontend:/app
             - frontend_node_modules:/app/node_modules
-        command: sh -c "bun install && bun run dev --host 0.0.0.0"
+            - frontend_bun_cache:/root/.bun/install/cache
+        command: sh -c "bun install --frozen-lockfile && bun run dev --host 0.0.0.0 --port 5173"
         ports:
             - "5173:5173"
         environment:
-            - VITE_SERVER_URL=http://localhost:3000
+            VITE_SERVER_URL: http://localhost:3000/api/auth
         depends_on:
             backend:
-                condition: service_started
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "bun", "-e", "fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+            interval: 15s
+            timeout: 5s
+            retries: 10
+            start_period: 40s
         restart: unless-stopped
 
 volumes:
     mongodb_data:
+    redis_data:
     backend_node_modules:
     frontend_node_modules:
+    backend_bun_cache:
+    frontend_bun_cache:

@@ -1,5 +1,5 @@
-import { getEmailClient, sender } from "./EmailServer";
-import { logger } from "@/utils/logger";
+import { getEmailClient, sender } from "@/configs/email";
+import { logger } from "@/configs/logger";
 import {
     SUCCESSFUL_VERIFICATION_EMAIL_TEMPLATE,
     VERIFICATION_EMAIL_TEMPLATE,
@@ -51,7 +51,7 @@ export async function successfulVerificationEmail(username: string, email: strin
     }
 }
 
-export async function resetPasswordEmail(username: string, email: string, resetPasswordToken: string) {
+export async function resetPasswordEmail(username: string, email: string, resetUrl: string) {
     try {
         if (!email) throw new Error("Email is required.");
 
@@ -61,7 +61,7 @@ export async function resetPasswordEmail(username: string, email: string, resetP
             subject: "Reset your password",
             html: PASSWORD_RESET_REQUEST_TEMPLATE.replace("{userName}", username)
                 .replace("{companyName}", companyName)
-                .replace("{resetURL}", resetPasswordToken),
+                .replace("{resetURL}", resetUrl),
             category: "Password Reset",
         });
 

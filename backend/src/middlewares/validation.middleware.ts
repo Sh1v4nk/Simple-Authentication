@@ -7,7 +7,7 @@ import {
     emailCodeValidationSchema,
     forgotPasswordValidationSchema,
     resetPasswordValidationSchema,
-} from "@/validations/authValidations";
+} from "@/validations/auth.validation";
 
 const formatZodErrors = (errors: { path: (string | number)[]; message: string }[]): string[] =>
     errors.map((e) => (e.path.length > 0 ? `${e.path.join(".")}: ${e.message}` : e.message));

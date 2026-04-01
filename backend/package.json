@@ -1,14 +1,14 @@
 {
     "name": "auth-backend",
-    "module": "App.ts",
+    "module": "app.ts",
     "private": true,
     "type": "module",
     "version": "2.0.0",
     "scripts": {
         "build": "tsc && resolve-tspaths",
-        "start": "node dist/App.js",
-        "start:bun": "bun dist/App.js",
-        "dev": "bun --watch ./src/App.ts",
+        "start": "node dist/app.js",
+        "start:bun": "bun dist/app.js",
+        "dev": "bun --watch ./src/app.ts",
         "lint": "eslint src/**/*.ts",
         "lint:fix": "eslint src/**/*.ts --fix",
         "clean": "rm -rf dist"

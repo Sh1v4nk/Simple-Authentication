@@ -1,5 +1,5 @@
 import { MailtrapClient } from "mailtrap";
-import { getEnv } from "@/utils/envValidation";
+import { getEnv } from "@/configs/env";
 
 let client: MailtrapClient | null = null;
 

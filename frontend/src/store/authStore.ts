@@ -3,16 +3,39 @@ import axios from "@/utils/axiosConfig";
 import { AuthState } from "@/types";
 import { handleError } from "@/utils/handelErrors";
 
+type QueuedRequest = {
+    resolve: () => void;
+    reject: (error: unknown) => void;
+};
+
+const VERIFICATION_EMAIL_STORAGE_KEY = "verificationEmail";
+
+const getStoredVerificationEmail = (): string | null => {
+    if (typeof window === "undefined") return null;
+    return window.sessionStorage.getItem(VERIFICATION_EMAIL_STORAGE_KEY);
+};
+
+const setStoredVerificationEmail = (email: string | null): void => {
+    if (typeof window === "undefined") return;
+
+    if (!email) {
+        window.sessionStorage.removeItem(VERIFICATION_EMAIL_STORAGE_KEY);
+        return;
+    }
+
+    window.sessionStorage.setItem(VERIFICATION_EMAIL_STORAGE_KEY, email);
+};
+
 // Flag to prevent multiple refresh attempts
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: Function; reject: Function }> = [];
+let failedQueue: QueuedRequest[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown) => {
     failedQueue.forEach(({ resolve, reject }) => {
         if (error) {
             reject(error);
         } else {
-            resolve(token);
+            resolve();
         }
     });
 
@@ -36,7 +59,7 @@ axios.interceptors.response.use(
 
             if (isRefreshing) {
                 // If already refreshing, queue the request
-                return new Promise((resolve, reject) => {
+                return new Promise<void>((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
                     .then(() => {
@@ -54,7 +77,7 @@ axios.interceptors.response.use(
                 const refreshResponse = await axios.post("/refresh");
 
                 if (refreshResponse.status === 200) {
-                    processQueue(null, "success");
+                    processQueue(null);
 
                     // Always retry the request after successful refresh
                     return axios(originalRequest);
@@ -64,7 +87,7 @@ axios.interceptors.response.use(
                     );
                 }
             } catch (refreshError) {
-                processQueue(refreshError, null);
+                processQueue(refreshError);
 
                 // Refresh failed, clear auth state without making additional requests
                 useAuthStore.setState({
@@ -85,8 +108,9 @@ axios.interceptors.response.use(
     },
 );
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
+    verificationEmail: getStoredVerificationEmail(),
     isAuthenticated: false,
     error: null,
     isLoading: false,
@@ -118,11 +142,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
             set({
                 user: response.data.user,
+                verificationEmail: response.data.user?.email ?? null,
                 isAuthenticated: true,
                 isLoading: false,
                 message: response.data.message,
                 generalErrors: [],
             });
+            setStoredVerificationEmail(response.data.user?.email ?? null);
         } catch (error) {
             set({ isLoading: false });
             handleError(error, set);
@@ -148,12 +174,20 @@ export const useAuthStore = create<AuthState>((set) => ({
 
             set({
                 user: response.data.user,
+                verificationEmail: null,
                 isAuthenticated: true,
                 isLoading: false,
                 message: response.data.message,
                 generalErrors: [],
             });
+            setStoredVerificationEmail(null);
         } catch (error) {
+            const status = (error as { response?: { status?: number } })?.response
+                ?.status;
+            if (status === 403) {
+                set({ verificationEmail: email });
+                setStoredVerificationEmail(email);
+            }
             set({ isLoading: false });
             handleError(error, set);
         }
@@ -165,6 +199,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             await axios.post("/signout");
             set({
                 user: null,
+                verificationEmail: null,
                 isAuthenticated: false,
                 error: null,
                 isLoading: false,
@@ -175,14 +210,17 @@ export const useAuthStore = create<AuthState>((set) => ({
                 usernameError: null,
                 tokenError: [],
             });
+            setStoredVerificationEmail(null);
         } catch (error) {
             // Always clear auth state even if signout request fails
             set({
                 user: null,
+                verificationEmail: null,
                 isAuthenticated: false,
                 error: null,
                 isLoading: false,
             });
+            setStoredVerificationEmail(null);
             handleError(error, set);
         }
     },
@@ -193,6 +231,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             await axios.post("/revoke-all");
             set({
                 user: null,
+                verificationEmail: null,
                 isAuthenticated: false,
                 error: null,
                 isLoading: false,
@@ -203,14 +242,17 @@ export const useAuthStore = create<AuthState>((set) => ({
                 usernameError: null,
                 tokenError: [],
             });
+            setStoredVerificationEmail(null);
         } catch (error) {
             // Even if revoke-all fails, clear local state
             set({
                 user: null,
+                verificationEmail: null,
                 isAuthenticated: false,
                 error: null,
                 isLoading: false,
             });
+            setStoredVerificationEmail(null);
             handleError(error, set);
         }
     },
@@ -223,11 +265,13 @@ export const useAuthStore = create<AuthState>((set) => ({
             // Clear auth state without triggering signout
             set({
                 user: null,
+                verificationEmail: null,
                 isAuthenticated: false,
                 error: null,
                 isLoading: false,
                 isCheckingAuth: false,
             });
+            setStoredVerificationEmail(null);
             throw error;
         }
     },
@@ -240,11 +284,13 @@ export const useAuthStore = create<AuthState>((set) => ({
             });
             set({
                 user: response.data.user,
+                verificationEmail: null,
                 isAuthenticated: true,
                 isLoading: false,
                 message: response.data.message,
                 generalErrors: [],
             });
+            setStoredVerificationEmail(null);
             return response.data;
         } catch (error) {
             set({ isLoading: false });
@@ -252,10 +298,23 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
     },
 
-    resendOTP: async () => {
+    resendOTP: async (emailArg) => {
         set({ error: null });
         try {
-            const response = await axios.post("/resend-otp");
+            const email =
+                emailArg ??
+                get().verificationEmail ??
+                getStoredVerificationEmail() ??
+                get().user?.email;
+            if (!email) {
+                set({
+                    generalErrors: ["Unable to resend OTP. Please sign in again."],
+                    error: "Unable to resend OTP.",
+                });
+                return;
+            }
+
+            const response = await axios.post("/resend-otp", { email });
             set({
                 message: response.data.message,
                 generalErrors: [],
@@ -307,33 +366,32 @@ export const useAuthStore = create<AuthState>((set) => ({
 
         try {
             const response = await axios.get("/verify-auth");
+            const verificationEmail = response.data.user?.isVerified
+                ? null
+                : (response.data.user?.email ?? null);
+
             set({
                 user: response.data.user,
+                verificationEmail,
                 isAuthenticated: true,
                 isCheckingAuth: false,
             });
+            setStoredVerificationEmail(verificationEmail);
         } catch (error) {
-            // Check if this is a 401 that should trigger refresh
-            const axiosError = error as any;
-            if (axiosError?.response?.status === 401) {
+            const status = (error as { response?: { status?: number } })?.response
+                ?.status;
 
-
-                // The interceptor should have handled the refresh automatically
-                // If we get here, it means refresh failed, so logout is appropriate
-
+            if (status === 401 || status === 403) {
+                set({
+                    error: null,
+                    isCheckingAuth: false,
+                    isAuthenticated: false,
+                    user: null,
+                    verificationEmail: getStoredVerificationEmail(),
+                });
             } else {
-
+                set({ isCheckingAuth: false });
             }
-
-
-
-            // Only set to unauthenticated if we're sure it's not a temporary network issue
-            set({
-                error: null,
-                isCheckingAuth: false,
-                isAuthenticated: false,
-                user: null,
-            });
         } finally {
             isVerifyingAuth = false;
         }

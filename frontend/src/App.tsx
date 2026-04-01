@@ -12,8 +12,8 @@ function App() {
     const { verifyAuth, isCheckingAuth } = useAuthStore();
 
     useEffect(() => {
-        verifyAuth();
-    }, []);
+        void verifyAuth();
+    }, [verifyAuth]);
 
     return (
         <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">

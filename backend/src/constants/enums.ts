@@ -24,18 +24,12 @@ export const SUCCESS_MESSAGES = {
 
 export const ERROR_MESSAGES = {
     INCORRECT_FORMAT: "Incorrect Format",
-
-    // User-related errors
     EMAIL_ALREADY_EXISTS: "Email already exists",
     USERNAME_ALREADY_EXISTS: "Username already exists",
     INVALID_CREDENTIALS: "Invalid credentials",
-
-    // Authorization-related errors
     UNAUTHORIZED_USER_ID: "Unauthorized: User ID not provided",
     UNAUTHORIZED_TOKEN: "Unauthorized: Token is missing or invalid",
     TOKEN_VERIFICATION_FAILED: "Token verification failed",
-
-    // Token-specific errors
     USER_NOT_FOUND: "User not found",
     INVALID_VERIFICATION_CODE: "Invalid Verification Code",
     EXPIRED_VERIFICATION_CODE: "Invalid or expired verification code",
@@ -44,8 +38,6 @@ export const ERROR_MESSAGES = {
     INVALID_TOKEN: "Invalid token",
     TOKEN_NOT_ACTIVE: "Token not yet active",
     INVALID_REFRESH_TOKEN: "Invalid or expired refresh token",
-
-    // General error handling
     UNKNOWN_ERROR: "An unknown error occurred",
     UNEXPECTED_ERROR: "An unexpected error occurred",
 };

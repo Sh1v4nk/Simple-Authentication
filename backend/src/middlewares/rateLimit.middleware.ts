@@ -1,10 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import { Ratelimit } from "@upstash/ratelimit";
-import { getClientIP } from "@/utils/getClientIP";
-import redis from "@/utils/redis";
-import { getEnv } from "@/utils/envValidation";
+import { getClientIP } from "@/utils/clientIP";
+import redis from "@/configs/redis";
+import { getEnv } from "@/configs/env";
 import { TIMING_CONSTANTS } from "@/constants/timings";
 import { RATE_LIMIT_CONFIG } from "@/constants/rateLimits";
+import { incrWithTtl } from "@/utils/redisScripts";
 
 let healthLimiter: Ratelimit | null | undefined;
 
@@ -27,7 +28,6 @@ const applyRateLimit = async (
     identifier: string,
     message: string,
 ) => {
-    // If Redis is unavailable, fail open — don't block legitimate traffic
     if (!limiter) return next();
 
     try {
@@ -49,13 +49,11 @@ const applyRateLimit = async (
 
         next();
     } catch (error) {
-        // Redis failure — log and fail open rather than taking down all traffic
         req.log.error({ err: error }, "[RATE_LIMIT] Redis error, failing open");
         next();
     }
 };
 
-// Limiters
 const generalLimiter = createLimiter("general", RATE_LIMIT_CONFIG.GENERAL.requests, RATE_LIMIT_CONFIG.GENERAL.window);
 const authLimiter = createLimiter("auth", RATE_LIMIT_CONFIG.AUTH.requests, RATE_LIMIT_CONFIG.AUTH.window);
 const passwordResetLimiter = createLimiter(
@@ -129,17 +127,14 @@ export const routeScanningProtection = async (req: Request, res: Response, next:
         const { success, reset } = await scanLimiter.limit(ip);
 
         if (!success) {
-            // Throttle log spam — only log first N hits per IP per hour
             if (redis) {
                 const logKey = `scan-log:${ip}`;
                 try {
-                    const logCount = await redis.incr(logKey);
-                    if (logCount === 1) await redis.expire(logKey, 3600);
+                    const logCount = await incrWithTtl(redis, logKey, Math.floor(TIMING_CONSTANTS.ONE_HOUR / 1000));
                     if (logCount <= RATE_LIMIT_CONFIG.SCAN_LOG_LIMIT) {
                         req.log.warn({ ip, path: req.originalUrl }, "[SCAN] Route scan detected");
                     }
                 } catch {
-                    // Log Redis failure but still block the request
                     req.log.warn({ ip, path: req.originalUrl }, "[SCAN] Route scan detected");
                 }
             }
@@ -158,8 +153,6 @@ export const routeScanningProtection = async (req: Request, res: Response, next:
     }
 };
 
-// Adds artificial delay for IPs with repeated failures — slows brute force
-// without locking the account
 export const progressiveDelay = async (req: Request, _res: Response, next: NextFunction) => {
     if (!redis) return next();
 
@@ -168,8 +161,7 @@ export const progressiveDelay = async (req: Request, _res: Response, next: NextF
     const windowSeconds = Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000);
 
     try {
-        const hits = await redis.incr(key);
-        if (hits === 1) await redis.expire(key, windowSeconds);
+        const hits = await incrWithTtl(redis, key, windowSeconds);
 
         if (hits > RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) {
             const delay = Math.min(
@@ -202,9 +194,6 @@ export const ipSecurityCheck = (req: Request, res: Response, next: NextFunction)
     next();
 };
 
-// content-length check is intentionally kept here as an early rejection
-// before the body parser even reads the stream — cheaper than letting
-// express.json parse then reject
 export const requestValidation = (req: Request, res: Response, next: NextFunction) => {
     if (req.method !== "OPTIONS" && !req.get("user-agent")) {
         return res.status(400).json({ success: false, message: "Missing User-Agent" });
@@ -212,7 +201,6 @@ export const requestValidation = (req: Request, res: Response, next: NextFunctio
 
     const size = Number(req.get("content-length") || 0);
     if (size > 1024 * 100) {
-        // 100kb — matches express.json limit in server.ts
         return res.status(413).json({ success: false, message: "Request too large" });
     }
 
@@ -234,7 +222,6 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
 };
 
 export const securityLogger = (req: Request, _res: Response, next: NextFunction) => {
-    // req.rateLimit is only set if a rate limiter ran before this — guard defensively
     if (req.rateLimit && req.rateLimit.remaining <= 2) {
         req.log.warn({ ip: req.clientIP, remaining: req.rateLimit.remaining, path: req.originalUrl }, "[RATE_LIMIT] Near limit");
     }

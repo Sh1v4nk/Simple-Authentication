@@ -10,53 +10,57 @@ import {
     resendOTP,
     refreshToken,
     revokeAllTokens,
-} from "@/controllers/Auth.controller";
-
+} from "@/controllers/auth.controller";
+import { verifyAuthToken, requireVerified, attachAuthContextIfPresent, verifyAccessTokenSignature } from "@/middlewares/auth.middleware";
+import { checkExistingUser } from "@/middlewares/existingUser.middleware";
 import {
-    checkExistingUser,
-    verifyAuthToken,
     validateSignUp,
     validateSignIn,
     validateEmailCode,
     validateForgotPassword,
     validateResetPassword,
+} from "@/middlewares/validation.middleware";
+import {
     authRateLimit,
     passwordResetRateLimit,
     emailVerificationRateLimit,
-    authSecurity,
     progressiveDelay,
-    honeypot,
-    accountLockoutProtection,
-    handleFailedLogin,
     securityHeaders,
     requestValidation,
     securityLogger,
     ipSecurityCheck,
     refreshTokenRateLimit,
-} from "@/middlewares";
+} from "@/middlewares/rateLimit.middleware";
+import {
+    authSecurity,
+    honeypot,
+    accountLockoutProtection,
+    handleFailedLogin,
+    enforceTrustedOriginForCookieAuth,
+} from "@/middlewares/security.middleware";
 
 const router = express.Router();
 
-router.use(securityHeaders); // Security headers first
-router.use(securityLogger); // Request logging
-router.use(requestValidation); // Basic request validation
-router.use(ipSecurityCheck); // IP and user-agent validation
-router.use(authSecurity); // Auth-specific security
+router.use(securityHeaders);
+router.use(requestValidation);
+router.use(ipSecurityCheck);
+router.use(authSecurity);
+router.use(securityLogger);
+router.use(enforceTrustedOriginForCookieAuth);
 
-// Auth verification endpoint (minimal rate limiting for UX)
-router.get("/verify-auth", verifyAuthToken, verifyAuth);
+router.get("/verify-auth", verifyAccessTokenSignature, verifyAuth);
 
 router.post("/signup", authRateLimit, progressiveDelay, honeypot, validateSignUp, checkExistingUser, signup);
 router.post("/signin", authRateLimit, progressiveDelay, accountLockoutProtection, validateSignIn, signin, handleFailedLogin);
-router.post("/signout", verifyAuthToken, signout);
+router.post("/signout", attachAuthContextIfPresent, signout);
 
 router.post("/verify-email", emailVerificationRateLimit, validateEmailCode, verifyEmail);
-router.post("/resend-otp", emailVerificationRateLimit, verifyAuthToken, resendOTP);
+router.post("/resend-otp", emailVerificationRateLimit, validateForgotPassword, resendOTP);
 
 router.post("/forgot-password", passwordResetRateLimit, progressiveDelay, validateForgotPassword, forgotPassword);
 router.post("/reset-password/:token", passwordResetRateLimit, progressiveDelay, validateResetPassword, resetPassword);
 
 router.post("/refresh", refreshTokenRateLimit, refreshToken);
-router.post("/revoke-all", verifyAuthToken, revokeAllTokens);
+router.post("/revoke-all", verifyAuthToken, requireVerified, revokeAllTokens);
 
 export default router;

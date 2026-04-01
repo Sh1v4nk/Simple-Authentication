@@ -21,9 +21,15 @@ interface User {
     isVerified: boolean;
 }
 
+interface RefreshTokenResponse {
+    accessToken: string;
+    message: string;
+}
+
 // authStore interface
 export interface AuthState {
     user: User | null;
+    verificationEmail: string | null;
     isAuthenticated: boolean;
     error: string | null;
     isLoading: boolean;
@@ -40,10 +46,10 @@ export interface AuthState {
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, password: string) => Promise<void>;
     verifyEmail: (emailCode: string) => Promise<void>;
-    resendOTP: () => Promise<void>;
+    resendOTP: (email?: string) => Promise<void>;
     verifyAuth: () => Promise<void>;
     logoutAllDevices: () => Promise<void>;
-    refreshToken: () => Promise<any>;
+    refreshToken: () => Promise<RefreshTokenResponse | undefined>;
 }
 
 // ValidationError interface

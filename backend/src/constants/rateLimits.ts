@@ -8,7 +8,7 @@ export const RATE_LIMIT_CONFIG = {
     REFRESH_TOKEN: { requests: 20, window: TIMING_CONSTANTS.FIFTEEN_MINUTES },
     HEALTH_CHECK: { requests: 60, window: TIMING_CONSTANTS.FIFTEEN_MINUTES },
     ROUTE_SCANNING: { requests: 5, window: TIMING_CONSTANTS.ONE_HOUR },
-    PROGRESSIVE_DELAY: { threshold: 5, delayMs: 500, maxDelayMs: 5000 },
+    PROGRESSIVE_DELAY: { threshold: 7, delayMs: 500, maxDelayMs: 5000 },
     SCAN_LOG_LIMIT: 3,
     GLOBAL_LOGIN_ALERT_THRESHOLD: 20,
     GLOBAL_LOGIN_ALERT_WINDOW_SECONDS: 24 * 60 * 60,

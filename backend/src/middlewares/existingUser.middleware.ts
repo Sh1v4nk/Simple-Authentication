@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import User from "@/models/UserModel";
+import User from "@/models/user.model";
 import { sendErrorResponse } from "@/utils/response";
 import { ERROR_MESSAGES, HTTP_STATUS } from "@/constants/enums";
 

@@ -1,5 +1,5 @@
 import { Redis } from "@upstash/redis";
-import { logger } from "@/utils/logger";
+import { logger } from "@/configs/logger";
 
 let redis: Redis | null = null;
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -76,27 +76,29 @@ function EmailVerifyPage() {
         }
     };
 
-    const submitOTP = async (): Promise<void> => {
-        const verificationCode = code.join("");
-        try {
-            await verifyEmail(verificationCode);
-            toast.success("Email verification successful", {
-                cancel: {
-                    label: "Close",
-                    onClick: () => {
-                        toast.dismiss();
+    const submitOTP = useCallback(
+        async (verificationCode: string): Promise<void> => {
+            try {
+                await verifyEmail(verificationCode);
+                toast.success("Email verification successful", {
+                    cancel: {
+                        label: "Close",
+                        onClick: () => {
+                            toast.dismiss();
+                        },
                     },
-                },
-            });
-            navigate("/signin");
-        } catch (error) {
-            console.error("Email Verification error:", error);
-        }
-    };
+                });
+                navigate("/");
+            } catch (error) {
+                console.error("Email Verification error:", error);
+            }
+        },
+        [navigate, verifyEmail],
+    );
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        submitOTP();
+        void submitOTP(code.join(""));
     };
 
     const handleResendOtp = async () => {
@@ -127,10 +129,10 @@ function EmailVerifyPage() {
 
     useEffect(() => {
         if (code.every((digit) => digit !== "")) {
-            submitOTP();
+            void submitOTP(code.join(""));
             inputRefs.current.forEach((input) => input?.blur());
         }
-    }, [code]);
+    }, [code, submitOTP]);
 
     return (
         <motion.div

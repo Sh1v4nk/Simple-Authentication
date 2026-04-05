@@ -28,11 +28,11 @@ end
 local lockMinutes = 0
 if failures >= 10 then
     lockMinutes = 60
-elseif failures >= 5 then
+elseif failures >= 7 then
     lockMinutes = 30
-elseif failures >= 3 then
+elseif failures >= 5 then
     lockMinutes = 15
-elseif failures >= 1 then
+elseif failures >= 3 then
     lockMinutes = 5
 end
 
@@ -52,8 +52,7 @@ return { failures, globalAttempts, lockMinutes }
 `;
 
 const ATOMIC_CLEAR_LOGIN_STATE_SCRIPT = `
-redis.call("DEL", KEYS[1], KEYS[2])
-return 1
+return redis.call("DEL", KEYS[1], KEYS[2])
 `;
 
 const toNumber = (value: unknown): number => {
@@ -104,11 +103,15 @@ const recordFailedLogin = async (email: string, ip: string, reqLog: Request["log
     const failKey = `fail:${attemptKey}`;
     const globalKey = `global-attempts:${normalizeEmail(email)}`;
     const lockoutKey = `lockout:${attemptKey}`;
-    const rawResult = await r.eval(ATOMIC_RECORD_FAILED_LOGIN_SCRIPT, [failKey, globalKey, lockoutKey], [
-        String(Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000)),
-        String(RATE_LIMIT_CONFIG.GLOBAL_LOGIN_ALERT_WINDOW_SECONDS),
-        String(Date.now()),
-    ]);
+    const rawResult = await r.eval(
+        ATOMIC_RECORD_FAILED_LOGIN_SCRIPT,
+        [failKey, globalKey, lockoutKey],
+        [
+            String(Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000)),
+            String(RATE_LIMIT_CONFIG.GLOBAL_LOGIN_ALERT_WINDOW_SECONDS),
+            String(Date.now()),
+        ],
+    );
 
     const result = Array.isArray(rawResult) ? rawResult : [rawResult];
     const failures = toNumber(result[0]);

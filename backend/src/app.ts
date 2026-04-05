@@ -12,7 +12,7 @@ import { logger } from "@/configs/logger";
 import { checkRedisHealth } from "@/configs/redis";
 import { validateEnv, getEnv } from "@/configs/env";
 import { ensureIndexes, checkDatabaseHealth } from "@/utils/dbOptimizer";
-import { generalRateLimit, routeScanningProtection, healthCheckRateLimit } from "@/middlewares/rateLimit.middleware";
+import { generalRateLimit, routeScanningProtection } from "@/middlewares/rateLimit.middleware";
 import type { HealthCache } from "@/types/app.types";
 import { isTrustedOrigin } from "@/utils/origin";
 
@@ -58,12 +58,8 @@ const corsOptions = {
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" }, contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
-app.use(generalRateLimit);
-app.use(cookieParser());
-app.use(express.json({ limit: "100kb" }));
-app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
-app.get("/health", healthCheckRateLimit, async (_req, res) => {
+app.get("/health", async (_req, res) => {
     if (healthCache && Date.now() < healthCache.expiresAt) {
         res.status(healthCache.statusCode).json(healthCache.payload);
         return;
@@ -99,6 +95,11 @@ app.get("/health", healthCheckRateLimit, async (_req, res) => {
 
     res.status(statusCode).json(payload);
 });
+
+app.use(generalRateLimit);
+app.use(cookieParser());
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
 app.use("/api/auth", AuthRoute);
 

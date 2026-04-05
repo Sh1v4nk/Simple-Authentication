@@ -1,177 +1,230 @@
 import type { Request, Response, NextFunction } from "express";
-import { Ratelimit } from "@upstash/ratelimit";
 import { getClientIP } from "@/utils/clientIP";
-import redis from "@/configs/redis";
-import { getEnv } from "@/configs/env";
 import { TIMING_CONSTANTS } from "@/constants/timings";
 import { RATE_LIMIT_CONFIG } from "@/constants/rateLimits";
-import { incrWithTtl } from "@/utils/redisScripts";
 
-let healthLimiter: Ratelimit | null | undefined;
+interface SlidingWindowEntry {
+    timestamps: number[];
+    lastCleanup: number;
+}
 
-const createLimiter = (name: string, requests: number, windowMs: number) => {
-    if (!redis) return null;
+class InMemoryRateLimiter {
+    private readonly windows = new Map<string, SlidingWindowEntry>();
+    private readonly maxRequests: number;
+    private readonly windowMs: number;
+    private readonly prefix: string;
+    private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-    return new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(requests, `${windowMs} ms`),
-        prefix: `ratelimit:${name}`,
-        analytics: false,
-    });
-};
+    constructor(prefix: string, maxRequests: number, windowMs: number) {
+        this.prefix = prefix;
+        this.maxRequests = maxRequests;
+        this.windowMs = windowMs;
 
-const applyRateLimit = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    limiter: Ratelimit | null,
-    identifier: string,
-    message: string,
-) => {
-    if (!limiter) return next();
+        // Periodic cleanup of expired entries to prevent memory leaks
+        this.cleanupTimer = setInterval(() => this.cleanup(), Math.max(windowMs * 2, 60_000));
+        this.cleanupTimer.unref();
+    }
 
-    try {
-        const { success, limit, remaining, reset } = await limiter.limit(identifier);
+    limit(identifier: string): { success: boolean; limit: number; remaining: number; reset: number } {
+        const key = `${this.prefix}:${identifier}`;
+        const now = Date.now();
+        const windowStart = now - this.windowMs;
 
-        req.rateLimit = { limit, remaining, resetTime: new Date(reset) };
-
-        res.setHeader("RateLimit-Limit", limit.toString());
-        res.setHeader("RateLimit-Remaining", remaining.toString());
-        res.setHeader("RateLimit-Reset", Math.ceil(reset / 1000).toString());
-
-        if (!success) {
-            return res.status(429).json({
-                success: false,
-                message,
-                retryAfter: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
-            });
+        let entry = this.windows.get(key);
+        if (!entry) {
+            entry = { timestamps: [], lastCleanup: now };
+            this.windows.set(key, entry);
         }
 
-        next();
-    } catch (error) {
-        req.log.error({ err: error }, "[RATE_LIMIT] Redis error, failing open");
-        next();
-    }
-};
+        // Remove expired timestamps
+        entry.timestamps = entry.timestamps.filter((t) => t > windowStart);
+        entry.lastCleanup = now;
 
-const generalLimiter = createLimiter("general", RATE_LIMIT_CONFIG.GENERAL.requests, RATE_LIMIT_CONFIG.GENERAL.window);
-const authLimiter = createLimiter("auth", RATE_LIMIT_CONFIG.AUTH.requests, RATE_LIMIT_CONFIG.AUTH.window);
-const passwordResetLimiter = createLimiter(
+        const remaining = Math.max(0, this.maxRequests - entry.timestamps.length);
+        const reset = entry.timestamps.length > 0 ? entry.timestamps[0]! + this.windowMs : now + this.windowMs;
+
+        if (entry.timestamps.length >= this.maxRequests) {
+            return { success: false, limit: this.maxRequests, remaining: 0, reset };
+        }
+
+        entry.timestamps.push(now);
+        return { success: true, limit: this.maxRequests, remaining: remaining - 1, reset };
+    }
+
+    private cleanup(): void {
+        const now = Date.now();
+        const cutoff = now - this.windowMs * 2;
+
+        for (const [key, entry] of this.windows) {
+            if (entry.lastCleanup < cutoff) {
+                this.windows.delete(key);
+            }
+        }
+    }
+
+    destroy(): void {
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+            this.cleanupTimer = null;
+        }
+        this.windows.clear();
+    }
+}
+
+class InMemoryCounter {
+    private readonly counters = new Map<string, { count: number; expiresAt: number }>();
+    private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+    constructor(cleanupIntervalMs = 60_000) {
+        this.cleanupTimer = setInterval(() => this.cleanup(), cleanupIntervalMs);
+        this.cleanupTimer.unref();
+    }
+
+    increment(key: string, windowMs: number): number {
+        const now = Date.now();
+        const existing = this.counters.get(key);
+
+        if (existing && existing.expiresAt > now) {
+            existing.count += 1;
+            return existing.count;
+        }
+
+        this.counters.set(key, { count: 1, expiresAt: now + windowMs });
+        return 1;
+    }
+
+    private cleanup(): void {
+        const now = Date.now();
+        for (const [key, entry] of this.counters) {
+            if (entry.expiresAt <= now) {
+                this.counters.delete(key);
+            }
+        }
+    }
+
+    destroy(): void {
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+            this.cleanupTimer = null;
+        }
+        this.counters.clear();
+    }
+}
+
+const generalLimiter = new InMemoryRateLimiter("general", RATE_LIMIT_CONFIG.GENERAL.requests, RATE_LIMIT_CONFIG.GENERAL.window);
+const authLimiter = new InMemoryRateLimiter("auth", RATE_LIMIT_CONFIG.AUTH.requests, RATE_LIMIT_CONFIG.AUTH.window);
+const passwordResetLimiter = new InMemoryRateLimiter(
     "password-reset",
     RATE_LIMIT_CONFIG.PASSWORD_RESET.requests,
     RATE_LIMIT_CONFIG.PASSWORD_RESET.window,
 );
-const emailVerificationLimiter = createLimiter(
-    "email-verify",
-    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.requests,
-    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.window,
+const verifyCodeLimiter = new InMemoryRateLimiter(
+    "verify-code",
+    RATE_LIMIT_CONFIG.VERIFY_CODE.requests,
+    RATE_LIMIT_CONFIG.VERIFY_CODE.window,
 );
-const refreshTokenLimiter = createLimiter(
+const resendOtpLimiter = new InMemoryRateLimiter("resend-otp", RATE_LIMIT_CONFIG.RESEND_OTP.requests, RATE_LIMIT_CONFIG.RESEND_OTP.window);
+const refreshTokenLimiter = new InMemoryRateLimiter(
     "refresh-token",
     RATE_LIMIT_CONFIG.REFRESH_TOKEN.requests,
     RATE_LIMIT_CONFIG.REFRESH_TOKEN.window,
 );
-const scanLimiter = createLimiter("scan", RATE_LIMIT_CONFIG.ROUTE_SCANNING.requests, RATE_LIMIT_CONFIG.ROUTE_SCANNING.window);
+const scanLimiter = new InMemoryRateLimiter("scan", RATE_LIMIT_CONFIG.ROUTE_SCANNING.requests, RATE_LIMIT_CONFIG.ROUTE_SCANNING.window);
 
-const getHealthLimiter = (): Ratelimit | null => {
-    if (healthLimiter !== undefined) return healthLimiter;
+const delayCounter = new InMemoryCounter();
+const scanLogCounter = new InMemoryCounter();
 
-    const { INFRA_TIER } = getEnv();
-    healthLimiter =
-        INFRA_TIER === "free"
-            ? null
-            : createLimiter("health", RATE_LIMIT_CONFIG.HEALTH_CHECK.requests, RATE_LIMIT_CONFIG.HEALTH_CHECK.window);
-    return healthLimiter;
+const applyRateLimit = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    limiter: InMemoryRateLimiter,
+    identifier: string,
+    message: string,
+) => {
+    const { success, limit, remaining, reset } = limiter.limit(identifier);
+
+    req.rateLimit = { limit, remaining, resetTime: new Date(reset) };
+
+    res.setHeader("RateLimit-Limit", limit.toString());
+    res.setHeader("RateLimit-Remaining", remaining.toString());
+    res.setHeader("RateLimit-Reset", Math.ceil(reset / 1000).toString());
+
+    if (!success) {
+        return res.status(429).json({
+            success: false,
+            message,
+            retryAfter: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
+        });
+    }
+
+    next();
 };
 
-export const generalRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const generalRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
     req.clientIP = ip;
-    await applyRateLimit(req, res, next, generalLimiter, ip, "Too many requests");
+    applyRateLimit(req, res, next, generalLimiter, ip, "Too many requests");
 };
 
-export const authRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const authRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
     const email = String(req.body?.email || "unknown").toLowerCase();
     req.clientIP = ip;
-    await applyRateLimit(req, res, next, authLimiter, `auth:${ip}:${email}`, "Too many authentication attempts");
+    applyRateLimit(req, res, next, authLimiter, `auth:${ip}:${email}`, "Too many authentication attempts");
 };
 
-export const passwordResetRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const passwordResetRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
     const email = String(req.body?.email || "unknown").toLowerCase();
-    await applyRateLimit(req, res, next, passwordResetLimiter, `reset:${ip}:${email}`, "Too many password reset attempts");
+    applyRateLimit(req, res, next, passwordResetLimiter, `reset:${ip}:${email}`, "Too many password reset attempts");
 };
 
-export const emailVerificationRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const verifyCodeRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
-    await applyRateLimit(req, res, next, emailVerificationLimiter, ip, "Too many email verification attempts");
+    applyRateLimit(req, res, next, verifyCodeLimiter, ip, "Too many verification attempts");
 };
 
-export const refreshTokenRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const resendOtpRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
-    await applyRateLimit(req, res, next, refreshTokenLimiter, ip, "Too many refresh token requests");
+    applyRateLimit(req, res, next, resendOtpLimiter, ip, "Too many OTP requests");
 };
 
-export const healthCheckRateLimit = async (req: Request, res: Response, next: NextFunction) => {
+export const refreshTokenRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
-    await applyRateLimit(req, res, next, getHealthLimiter(), ip, "Too many requests");
+    applyRateLimit(req, res, next, refreshTokenLimiter, ip, "Too many refresh token requests");
 };
 
-export const routeScanningProtection = async (req: Request, res: Response, next: NextFunction) => {
-    if (!scanLimiter) return next();
-
+export const routeScanningProtection = (req: Request, res: Response, next: NextFunction) => {
     const ip = getClientIP(req);
+    const { success, reset } = scanLimiter.limit(ip);
 
-    try {
-        const { success, reset } = await scanLimiter.limit(ip);
-
-        if (!success) {
-            if (redis) {
-                const logKey = `scan-log:${ip}`;
-                try {
-                    const logCount = await incrWithTtl(redis, logKey, Math.floor(TIMING_CONSTANTS.ONE_HOUR / 1000));
-                    if (logCount <= RATE_LIMIT_CONFIG.SCAN_LOG_LIMIT) {
-                        req.log.warn({ ip, path: req.originalUrl }, "[SCAN] Route scan detected");
-                    }
-                } catch {
-                    req.log.warn({ ip, path: req.originalUrl }, "[SCAN] Route scan detected");
-                }
-            }
-
-            return res.status(429).json({
-                success: false,
-                message: "Too many invalid route requests",
-                retryAfter: Math.ceil((reset - Date.now()) / 1000),
-            });
+    if (!success) {
+        const logCount = scanLogCounter.increment(`scan-log:${ip}`, TIMING_CONSTANTS.ONE_HOUR);
+        if (logCount <= RATE_LIMIT_CONFIG.SCAN_LOG_LIMIT) {
+            req.log.warn({ ip, path: req.originalUrl }, "[SCAN] Route scan detected");
         }
 
-        next();
-    } catch (error) {
-        req.log.error({ err: error }, "[SCAN] Redis error, failing open");
-        next();
+        return res.status(429).json({
+            success: false,
+            message: "Too many invalid route requests",
+            retryAfter: Math.ceil((reset - Date.now()) / 1000),
+        });
     }
+
+    next();
 };
 
 export const progressiveDelay = async (req: Request, _res: Response, next: NextFunction) => {
-    if (!redis) return next();
-
     const ip = getClientIP(req);
-    const key = `delay:${ip}`;
-    const windowSeconds = Math.floor(TIMING_CONSTANTS.FIFTEEN_MINUTES / 1000);
+    const hits = delayCounter.increment(`delay:${ip}`, TIMING_CONSTANTS.FIFTEEN_MINUTES);
 
-    try {
-        const hits = await incrWithTtl(redis, key, windowSeconds);
-
-        if (hits > RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) {
-            const delay = Math.min(
-                (hits - RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) * RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.delayMs,
-                RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.maxDelayMs,
-            );
-            await new Promise((r) => setTimeout(r, delay));
-        }
-    } catch (error) {
-        req.log.error({ err: error }, "[PROGRESSIVE_DELAY] Redis error");
+    if (hits > RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) {
+        const delay = Math.min(
+            (hits - RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.threshold) * RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.delayMs,
+            RATE_LIMIT_CONFIG.PROGRESSIVE_DELAY.maxDelayMs,
+        );
+        await new Promise((r) => setTimeout(r, delay));
     }
 
     next();

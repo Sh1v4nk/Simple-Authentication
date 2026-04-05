@@ -12,7 +12,6 @@ import {
     revokeAllTokens,
 } from "@/controllers/auth.controller";
 import { verifyAuthToken, requireVerified, attachAuthContextIfPresent, verifyAccessTokenSignature } from "@/middlewares/auth.middleware";
-import { checkExistingUser } from "@/middlewares/existingUser.middleware";
 import {
     validateSignUp,
     validateSignIn,
@@ -23,7 +22,8 @@ import {
 import {
     authRateLimit,
     passwordResetRateLimit,
-    emailVerificationRateLimit,
+    verifyCodeRateLimit,
+    resendOtpRateLimit,
     progressiveDelay,
     securityHeaders,
     requestValidation,
@@ -50,12 +50,12 @@ router.use(enforceTrustedOriginForCookieAuth);
 
 router.get("/verify-auth", verifyAccessTokenSignature, verifyAuth);
 
-router.post("/signup", authRateLimit, progressiveDelay, honeypot, validateSignUp, checkExistingUser, signup);
+router.post("/signup", authRateLimit, progressiveDelay, honeypot, validateSignUp, signup);
 router.post("/signin", authRateLimit, progressiveDelay, accountLockoutProtection, validateSignIn, signin, handleFailedLogin);
 router.post("/signout", attachAuthContextIfPresent, signout);
 
-router.post("/verify-email", emailVerificationRateLimit, validateEmailCode, verifyEmail);
-router.post("/resend-otp", emailVerificationRateLimit, validateForgotPassword, resendOTP);
+router.post("/verify-email", verifyCodeRateLimit, progressiveDelay, validateEmailCode, verifyEmail);
+router.post("/resend-otp", resendOtpRateLimit, progressiveDelay, validateForgotPassword, resendOTP);
 
 router.post("/forgot-password", passwordResetRateLimit, progressiveDelay, validateForgotPassword, forgotPassword);
 router.post("/reset-password/:token", passwordResetRateLimit, progressiveDelay, validateResetPassword, resetPassword);

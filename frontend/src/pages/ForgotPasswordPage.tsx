@@ -68,11 +68,11 @@ function ForgotPasswordPage() {
                                         required
                                     />
                                 </div>
-                                {emailError && (
-                                    <p className="text-sm text-red-500">
-                                        {emailError}
+                                {emailError?.map((error, index) => (
+                                    <p key={index} className="text-sm text-red-500">
+                                        {error}
                                     </p>
-                                )}
+                                ))}
                             </div>
                             <Button
                                 type="submit"

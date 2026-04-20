@@ -78,11 +78,11 @@ function SignInPage() {
                                         className="border-zinc-700 bg-zinc-800 pl-10 text-white placeholder:text-zinc-500"
                                     />
                                 </div>
-                                {emailError && (
-                                    <p className="text-sm text-red-500">
-                                        {emailError}
+                                {emailError?.map((error, index) => (
+                                    <p key={index} className="text-sm text-red-500">
+                                        {error}
                                     </p>
-                                )}
+                                ))}
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="password" className="text-white">

@@ -85,11 +85,11 @@ function SignUpPage() {
                                     required
                                 />
                             </div>
-                            {usernameError && (
-                                <p className="text-sm text-red-500">
-                                    {usernameError}
+                            {usernameError?.map((error, index) => (
+                                <p key={index} className="text-sm text-red-500">
+                                    {error}
                                 </p>
-                            )}
+                            ))}
                         </div>
 
                         {/* Email Input */}
@@ -105,9 +105,11 @@ function SignUpPage() {
                                     required
                                 />
                             </div>
-                            {emailError && (
-                                <p className="text-sm text-red-500">{emailError}</p>
-                            )}
+                            {emailError?.map((error, index) => (
+                                <p key={index} className="text-sm text-red-500">
+                                    {error}
+                                </p>
+                            ))}
                         </div>
 
                         {/* Password Input */}

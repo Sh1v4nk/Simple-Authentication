@@ -22,7 +22,7 @@ interface User {
 }
 
 interface RefreshTokenResponse {
-    accessToken: string;
+    success: boolean;
     message: string;
 }
 

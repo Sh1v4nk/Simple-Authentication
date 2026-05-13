@@ -342,9 +342,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
         TokenService.setTokenCookies(res, result.newAccessToken, result.newRefreshToken, deviceId);
 
-        sendSuccessResponse(res, "Tokens refreshed successfully", {
-            accessToken: result.newAccessToken,
-        });
+        sendSuccessResponse(res, "Tokens refreshed successfully");
     } catch (error) {
         req.log.error({ err: error }, "[REFRESH_TOKEN] Error");
         const message = error instanceof Error ? error.message : ERROR_MESSAGES.UNEXPECTED_ERROR;

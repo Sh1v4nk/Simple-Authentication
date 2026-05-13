@@ -117,7 +117,7 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
     });
 });
 
-app.use("*", routeScanningProtection, (req, res) => {
+app.use(routeScanningProtection, (req, res) => {
     req.log.warn({ method: req.method, path: req.originalUrl, ip: req.ip }, "[404] Route not found");
     res.status(404).json({ success: false, message: "Route not found" });
 });
